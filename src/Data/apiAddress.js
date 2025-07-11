@@ -1,2 +1,2 @@
-﻿const apiAddress = "https://api.entekambolam.com";
+const apiAddress = "https://enetekambolam-be.onrender.com";
 export default apiAddress;
