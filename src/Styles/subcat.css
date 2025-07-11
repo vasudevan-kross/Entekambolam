@@ -1,0 +1,42 @@
+.sub-cat-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 100px));
+  gap: 20px;
+  padding: 15px;
+  width: 100%;
+  padding-left: 0;
+}
+.sub-cat-container .img {
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.sub-cat-container .upload {
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.sub-cat-container img {
+  width: 100%;
+  display: block;
+  transition: all 100ms ease-out;
+}
+.sub-cat-container img:hover {
+  transform: scale(1.04);
+  -webkit-filter: grayscale(0);
+  filter: grayscale(0);
+}
+
+@media screen and (max-width: 600px) {
+  .sub-cat-container .img {
+    width: 100%;
+  }
+}
