@@ -817,16 +817,38 @@ function NewOrder() {
     setCouponError("");
     setFilteredCoupons(coupons);
     setCouponValidating(false);
-    // Reset to original amount
     setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+  };
+
+  const setCouponState = (coupon, error = "") => {
+    if (coupon) {
+      setSelectedCoupon(coupon);
+      setAppliedCoupon(coupon);
+      setCouponCode(coupon.code);
+      setCouponError("");
+    } else {
+      setSelectedCoupon(null);
+      setAppliedCoupon(null);
+      setCouponError(error);
+    }
+  };
+
+  const findCouponByCode = (code) => {
+    const trimmedCode = code.trim().toLowerCase();
+    return coupons.find(coupon =>
+      coupon?.code?.trim().toLowerCase() === trimmedCode
+    );
   };
 
   const validateCoupon = async (coupon) => {
     if (!coupon || !userId) return;
 
-    if (coupon.min_cart_value && parseFloat(originalOrderAmount) < parseFloat(coupon.min_cart_value)) {
+    const minVal = parseFloat(coupon.min_cart_value || 0);
+    const orderVal = parseFloat(originalOrderAmount);
+
+    if (minVal && orderVal < minVal) {
       setCouponError(`Minimum cart value for this coupon is ₹${coupon.min_cart_value}`);
-      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+      setorderAmount(orderVal.toFixed(2));
       return;
     }
 
@@ -835,72 +857,87 @@ function NewOrder() {
       const response = await ADD(token, `${api}/validate_coupon`, {
         code: coupon.code,
         user_id: userId,
-        cart_total: originalOrderAmount
+        cart_total: orderVal
       });
 
       if (response?.response === 200) {
         const discount = response.data?.discount || 0;
         setCouponError("");
-        setorderAmount(parseFloat(originalOrderAmount - discount).toFixed(2));
+        setorderAmount((orderVal - discount).toFixed(2));
       } else {
-        setCouponError(response?.message || 'Invalid coupon code');
-        setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+        setCouponError(response?.message || "Invalid coupon code");
+        setorderAmount(orderVal.toFixed(2));
       }
     } catch (error) {
-      console.error('Coupon validation error:', error);
-      setCouponError('Something went wrong. Please try again.');
-      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+      setCouponError("Something went wrong. Please try again.");
+      setorderAmount(orderVal.toFixed(2));
     } finally {
       setCouponValidating(false);
     }
   };
 
   const handleCouponChange = async (e, value, reason) => {
-    if (reason === 'clear' || !value) {
+    if (reason === "clear" || !value) {
       clearCouponSelection();
       return;
     }
+
     setCouponError("");
     setFilteredCoupons(coupons);
-    
-    if (typeof value === 'string') {
-    setSelectedCoupon(null);
-    setCouponCode(value);
-    setAppliedCoupon(null); 
-    return;
-  }
-    if (value && typeof value === 'object') {      
-    setSelectedCoupon(value);    
-    setAppliedCoupon(value);
-    setCouponCode(value.code);
+
+    if (typeof value === "string") {
+      const coupon = findCouponByCode(value);
+      setCouponState(coupon, coupon ? "" : "Invalid Coupon code");
+    } else if (value?.code) {
+      setCouponState(value);
     }
   };
 
-
-
   const handleCouponInputChange = (newInputValue, reason) => {
-    if (reason === 'clear' || !newInputValue) {
+    if (reason === "clear" || !newInputValue) {
       clearCouponSelection();
       return;
     }
-    if (reason !== 'input') return;
+
+    if (reason !== "input") return;
+
+    const input = newInputValue.toLowerCase();
     setCouponCode(newInputValue);
-    setSelectedCoupon(null);
-    setAppliedCoupon(null);
-    if (couponError) {
-      setCouponError("");
+    setCouponState(null); // Reset selected/applied
+
+    const filtered = coupons.filter(coupon => {
+      const code = coupon?.code?.toLowerCase() || "";
+      const desc = coupon?.description?.toLowerCase() || "";
+      return code.includes(input) || desc.includes(input);
+    });
+
+    setFilteredCoupons(filtered);
+    setCouponError(filtered.length === 0 ? "No matching coupons found" : "");
+  };
+
+  const handleCouponEnterPress = () => {
+    if (!couponCode || !coupons?.length) return;
+    if (appliedCoupon && appliedCoupon.code === couponCode) return;
+    const coupon = findCouponByCode(couponCode);
+    setFilteredCoupons(coupons);
+    
+    if (!coupon) {
+      setCouponState(null, "Invalid Coupon code");
+      return;
     }
-    if (coupons && coupons.length > 0) {
-      const search = (newInputValue || '').toLowerCase();
-      const filtered = coupons.filter(coupon => {
-        if (!coupon) return false;
-        const code = coupon.code ? coupon.code.toLowerCase() : '';
-        const desc = coupon.description ? coupon.description.toLowerCase() : '';
-        return code.includes(search) || desc.includes(search);
-      });
-      setFilteredCoupons(filtered);
+    setSelectedCoupon(coupon);
+    setCouponCode(coupon.code);
+    setAppliedCoupon(coupon);
+    setCouponError("");
+  };
+
+  const handleCouponKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleCouponEnterPress();
     }
   };
+
   return (
     <>
       <Snackbar
@@ -1954,13 +1991,24 @@ function NewOrder() {
                       return (
                         <li {...props}>
                           <Box display="flex" flexDirection="column">
-                            <span style={{ fontWeight: 600 }}>{option.code}</span>
-                            <span style={{ fontSize: 13, color: '#888' }}>{option.description}</span>
-                            <span style={{ fontSize: 12, color: '#666' }}>
+                            <span style={{ fontWeight: 600, fontSize: 18 }}>{option.code}</span>
+                            <span style={{ fontSize: 16, color: '#888' }}>{option.description}</span>
+                            <span style={{ fontSize: 16, color: '#666' }}>
                               {option.type === 1 ? `₹${option.value} off` : `${option.value}% off`} | Min Cart: ₹{option.min_cart_value}
                             </span>
-                            <span style={{ fontSize: 12, color: option.is_active ? 'green' : 'red' }}>
+                            <span style={{ fontSize: 15, color: option.is_active ? 'green' : 'red' }}>
                               {option.is_active ? 'Active' : 'Inactive'} | Expires: {option.expires_at ? option.expires_at.split('T')[0] : 'N/A'}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 14,
+                                color: Number(originalOrderAmount) >= Number(option.min_cart_value) ? '#4CAF50' : '#FF9800',
+                                fontStyle: 'italic'
+                              }}
+                            >
+                              {Number(originalOrderAmount) >= Number(option.min_cart_value)
+                                ? `✓ Coupon can be applied!`
+                                : `Your cart value is ₹${Number(originalOrderAmount).toFixed(2)}. Add ₹${Math.max(0, Number(option.min_cart_value) - Number(originalOrderAmount)).toFixed(2)} more to unlock this coupon.`}
                             </span>
                           </Box>
                         </li>
@@ -1980,6 +2028,7 @@ function NewOrder() {
                         fullWidth
                         color="secondary"
                         error={!!couponError}
+                        onKeyDown={handleCouponKeyDown}
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -2004,7 +2053,14 @@ function NewOrder() {
                     </Typography>
                   ) : appliedCoupon ? (
                     <Typography color="success.main" sx={{ fontSize: 14, ml: 1 }}>
-                      Coupon "{appliedCoupon.code}" applied successfully!
+                      {appliedCoupon.type === 2 ? (
+                        <>
+                          Coupon "{appliedCoupon.code}" applied: {appliedCoupon.value}% off (₹
+                          {((appliedCoupon.value / 100) * originalOrderAmount).toFixed(2)})!
+                        </>
+                      ) : (
+                        <>Coupon "{appliedCoupon.code}" applied: ₹{appliedCoupon.value} off!</>
+                      )}
                     </Typography>
                   ) : null}
                 </Grid>
