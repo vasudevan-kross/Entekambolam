@@ -882,7 +882,7 @@ function ViewOrdersDeliveries() {
               />
             </Box>
             <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
+              <DatePicker className= {theme.palette.mode === "dark" ? "datepickerForm darkMode": "datepickerForm"}
                 label="Delivery Date"
                 value={selectedDate}
                 onChange={handleDateChange}
@@ -951,7 +951,8 @@ function ViewOrdersDeliveries() {
 
         {!isLoading && allDeliveryOrder ? (
           <Box
-            className="bg-card text-card-foreground shadow-sm rounded-lg height-calc p-4 xl:p-2"
+             className={`text-card-foreground shadow-sm rounded-lg height-calc p-4 xl:p-2 ${theme.palette.mode === "dark" ? "bg-darkcard" : "bg-card"
+              }`}
             sx={{
               width: "100%",
               height: "100%",
@@ -969,18 +970,20 @@ function ViewOrdersDeliveries() {
                 color: colors.greenAccent[300],
               },
               "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: colors.navbarBG[400],
+                backgroundColor:
+                  theme.palette.mode === "dark" ? "#334155" : "#0e0e23",
                 borderBottom: "none",
                 color: "#f5f5f5",
               },
               "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: colors.primary[400],
+                backgroundColor: colors.primary[0],
                 borderBottom: "#000",
               },
               "& .MuiDataGrid-footerContainer": {
                 borderTop: "none",
-                backgroundColor: colors.navbarBG[400],
-                color: "#f5f5f5 !important",
+                backgroundColor:
+                  theme.palette.mode === "dark" ? "#334155" : "#0e0e23",
+                color: "#f5f5f5",
               },
               "& .MuiTablePagination-root": {
                 color: "#f5f5f5 !important",

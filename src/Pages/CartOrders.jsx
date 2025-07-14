@@ -503,7 +503,6 @@ function CartOrders() {
                   xs: "80%",
                   sm: "300px",
                   md: "500px",
-                  marginTop: "16px",
                 },
               }}
               id="Search"
@@ -513,14 +512,15 @@ function CartOrders() {
               value={searchText}
               onChange={handleSearchChange}
             />
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
+            <LocalizationProvider className="datepickerLocal" dateAdapter={AdapterDateFns}>
+              <DatePicker className= {theme.palette.mode === "dark" ? "datepickerForm darkMode": "datepickerForm"}
                 label="Select Date"
                 value={selectedDate}
                 onChange={handleDateChange}
                 format="dd/MM/yyyy"
                 renderInput={(params) => <TextField {...params} fullWidth />}
                 disabled={isLoading}
+                color="secondary"
               />
             </LocalizationProvider>
             <Button

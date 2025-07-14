@@ -11,12 +11,10 @@ import { tokens } from "../theme";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import SubtitlesIcon from "@mui/icons-material/Subtitles";
 import GroupIcon from "@mui/icons-material/Group";
-import AssessmentIcon from "@mui/icons-material/Assessment";
 import ArtTrackIcon from "@mui/icons-material/ArtTrack";
 import { useTheme } from "@mui/material/styles";
 import { Box } from "@mui/system";
-import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
-import { IconButton, Typography, useMediaQuery } from "@mui/material";
+import { Typography, useMediaQuery } from "@mui/material";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import PaymentIcon from "@mui/icons-material/Payment";
 import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
@@ -25,30 +23,13 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import VpnLockOutlinedIcon from "@mui/icons-material/VpnLockOutlined";
 import LibraryBooksOutlinedIcon from "@mui/icons-material/LibraryBooksOutlined";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
-import SettingsIcon from "@mui/icons-material/Settings";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 // import NextWeekIcon from "@mui/icons-material/NextWeek";
-import UpcomingOutlinedIcon from "@mui/icons-material/UpcomingOutlined";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import ContentPasteGoIcon from "@mui/icons-material/ContentPasteGo";
 import "../Styles/sidebar.css";
-import {
-  ApprovalOutlined,
-  ApprovalRounded,
-  ApprovalTwoTone,
-  SubscriptionsRounded,
-  ArrowDropDown,
-  ArrowDropUp,
-  AssignmentTurnedInRounded,
-  DeliveryDiningRounded,
-  PoolRounded,
-  ProductionQuantityLimitsRounded,
-  Warehouse,
-  MapOutlined,
-  MapsUgcRounded,
-} from "@mui/icons-material";
+import { ApprovalOutlined, ConfirmationNumber } from "@mui/icons-material";
 import FactoryOutlinedIcon from "@mui/icons-material/FactoryOutlined";
 import WalletOutlinedIcon from "@mui/icons-material/WalletOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
@@ -56,7 +37,6 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import Diversity1OutlinedIcon from "@mui/icons-material/Diversity1Outlined";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { useSelector } from "react-redux";
-import logo from "../assets/logo.png";
 import whitelogo from "../assets/whitelogo.png";
 import alogo from "../assets/a_logo.png";
 import "../Styles/sidebar.css";
@@ -421,6 +401,14 @@ function Sidebar() {
       display: isAdmin,
       icon: function () {
         return <ViewCarouselOutlinedIcon />;
+      },
+    },
+    {
+      name: "Coupons",
+      to: "Coupons",
+      display: isAdmin,
+      icon: function () {
+        return <ConfirmationNumber />;
       },
     },
     {

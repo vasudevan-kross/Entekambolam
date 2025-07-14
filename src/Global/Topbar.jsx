@@ -14,6 +14,7 @@ import {
   MenuItem,
   Typography,
   Divider,
+  Tooltip,
 } from "@mui/material";
 import { ColorModeContext } from "./../theme";
 import {
@@ -154,9 +155,11 @@ function Topbar() {
           }}
         >
           <MenuItem>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              {user?.email}
-            </Typography>
+            <Tooltip title={`${user?.email}`} arrow>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                {user?.email}
+              </Typography>
+            </Tooltip>
           </MenuItem>
           {user?.role[0].role_id !== 4 && <MenuItem>
             <Typography variant="body2" color="text.secondary">

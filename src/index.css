@@ -720,6 +720,13 @@ ul div .mainReportLink:first-child {
 
 .MuiPopover-root .MuiPopover-paper.MuiMenu-paper {
   max-height: calc(100% - 410px) !important;
+  width: 260px !important;
+}
+
+.MuiPopover-root .MuiPopover-paper.MuiMenu-paper ul li h6 {
+  white-space: break-spaces;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .qtyLabel input {
@@ -841,9 +848,30 @@ ul div .mainReportLink:first-child {
   z-index: 3;
 }
 
+.sticky-col-3 {
+  position: sticky !important;
+  left: 0px;
+  background: #0e0e23;
+  z-index: 3;
+}
+
+.sticky-col-4 {
+  position: sticky !important;
+  left: 120px;
+  background: #0e0e23;
+  z-index: 3;
+}
+
+
 .MuiDataGrid-row:hover .sticky-col-1,
 .MuiDataGrid-row:hover .sticky-col-2 {
   background-color: #f5f5f5;
+  z-index: 40;
+}
+
+.MuiDataGrid-row:hover .sticky-col-3,
+.MuiDataGrid-row:hover .sticky-col-4 {
+  background-color: #212134;
   z-index: 40;
 }
 
@@ -852,9 +880,19 @@ ul div .mainReportLink:first-child {
   background-color: #e0e1e1 !important
 }
 
+.Mui-selected:hover .sticky-col-3,
+.Mui-selected:hover .sticky-col-4 {
+  background-color: #16172a !important
+}
+
 .MuiDataGrid-row.Mui-selected .sticky-col-1,
 .MuiDataGrid-row.Mui-selected .sticky-col-2 {
   background-color: #ebebec;
+}
+
+.MuiDataGrid-row.Mui-selected .sticky-col-3,
+.MuiDataGrid-row.Mui-selected .sticky-col-4 {
+  background-color: #131427;
 }
 
 .idColumn {
@@ -910,10 +948,39 @@ ul div .mainReportLink:first-child {
   fill: currentColor;
 }
 
+.addcolor {
+  background: #334155 !important;
+}
+
 .deliveryNotesLineBreak {
   white-space: break-spaces;
   -webkit-line-clamp: 2;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.datepickerForm  label{
+  top: -8px;
+}
+
+.datepickerForm .MuiFormLabel-filled {
+  top: 0px;
+}
+
+.datepickerForm.darkMode label.Mui-focused {
+  color: white;
+  top:0px !important;
+}
+.datepickerForm.darkMode .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(255, 255, 255, 0.23);
+}
+.datepickerForm  input {
+  font-size: 14px;
+  padding: 10px;
+}
+
+.datepickerForm button svg {
+  width: 0.7em;
+  height: 0.7em;
 }

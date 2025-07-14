@@ -11,10 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import Box from "@mui/material/Box";
-import {
-  DataGrid,
-  GridToolbarContainer,
-} from "@mui/x-data-grid";
+import { DataGrid, GridToolbarContainer } from "@mui/x-data-grid";
 import moment from "moment/moment";
 
 import Dialog from "@mui/material/Dialog";
@@ -22,7 +19,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-import { Stack } from "@mui/system";
+import { display, Stack } from "@mui/system";
 import Skeleton from "@mui/material/Skeleton";
 import { ADD, DELETE, GET, UPDATE, UPLOAD } from "../Functions/apiFunction";
 import api from "../Data/api";
@@ -37,7 +34,7 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import Utils from "../Global/utils";
-import logo from "../assets/a_logo.png"
+import logo from "../assets/a_logo.png";
 import * as CONSTANTS from "../Common/Constants";
 import LoadingSkeleton from "../Components/LoadingSkeleton";
 
@@ -87,6 +84,7 @@ function Categories() {
   // update user state
   const [title, settitle] = useState("");
   const [Id, setId] = useState("");
+  const [displayOrder, setdisplayOrder] = useState(0);
 
   useEffect(() => {
     // Get categoriues
@@ -104,9 +102,26 @@ function Categories() {
 
   const update = async (e) => {
     e.preventDefault();
+    if (parseInt(displayOrder) !== 0) {
+      const duplicate = categories?.find(
+        (cat) =>
+          parseInt(cat.display_order) === parseInt(displayOrder) &&
+          cat.id !== Id
+      );
+      if (duplicate) {
+        setalertType("error");
+        setalertMsg(
+          `Display Order already in use by another category(${duplicate.title})`
+        );
+        handleSnakBarOpen();
+        return;
+      }
+    }
+
     var data = JSON.stringify({
       id: Id,
       title: title,
+      display_order: displayOrder,
     });
     const url = `${api}/update_cat`;
     setisUpdating(true);
@@ -147,8 +162,22 @@ function Categories() {
   // add category
   const Addcat = async (e) => {
     e.preventDefault();
+    if (parseInt(displayOrder) !== 0) {
+      const duplicate = categories?.find(
+        (cat) => parseInt(cat.display_order) === parseInt(displayOrder)
+      );
+      if (duplicate) {
+        setalertType("error");
+        setalertMsg(
+          `Display Order already in use by another category(${duplicate.title})`
+        );
+        handleSnakBarOpen();
+        return;
+      }
+    }
     const data = JSON.stringify({
       title: title,
+      display_order: displayOrder,
     });
     const url = `${api}/add_cat`;
     setisUpdating(true);
@@ -213,7 +242,9 @@ function Categories() {
       handleSnakBarOpen();
       setisUpdating(false);
       setalertType("error");
-      setalertMsg("This Category has already been associated with some Sub Categories");
+      setalertMsg(
+        "This Category has already been associated with some Sub Categories"
+      );
     }
   };
 
@@ -244,13 +275,14 @@ function Categories() {
   };
 
   const exportToCSV = () => {
-    const headers = ["S.No", "Title", "Last Update"];
+    const headers = ["S.No", "Title","Display Order", "Last Update"];
 
     const reversedCategories = [...categories].reverse();
 
     const csvData = reversedCategories.map((row, index) => [
       index + 1,
       row.title,
+      row.display_order,
       moment.utc(row.updated_at).local().format("DD-MM-YYYY HH:mm:ss"),
     ]);
 
@@ -261,11 +293,12 @@ function Categories() {
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Categories Reports");
 
-    const fileName = `Categories_Reports_${moment.utc(new Date()).local().format("DD-MM-YYYY")}.csv`;
+    const fileName = `Categories_Reports_${moment
+      .utc(new Date())
+      .local()
+      .format("DD-MM-YYYY")}.csv`;
     XLSX.writeFile(workbook, fileName);
   };
-
-
 
   const exportToPDF = () => {
     const doc = new jsPDF({
@@ -296,6 +329,7 @@ function Categories() {
       const tableColumn = [
         { header: "S.No", dataKey: "sno" },
         { header: "Title", dataKey: "title" },
+        { header: "Display Order", dataKey: "displayOrder" },
         { header: "Last Update", dataKey: "lastUpdate" },
       ];
 
@@ -304,48 +338,48 @@ function Categories() {
       const tableRows = reversedCategories.map((row, index) => ({
         sno: index + 1,
         title: row.title,
-        lastUpdate: moment.utc(row.updated_at).local().format("DD-MM-YYYY HH:mm:ss"),
+        displayOrder: row.display_order,
+        lastUpdate: moment
+          .utc(row.updated_at)
+          .local()
+          .format("DD-MM-YYYY HH:mm:ss"),
       }));
 
       const tableStartY = 10 + logoHeight + 10;
 
       doc.autoTable({
         head: [tableColumn.map((col) => col.header)],
-        body: tableRows.map((row) => [
-          row.sno,
-          row.title,
-          row.lastUpdate,
-        ]),
+        body: tableRows.map((row) => [row.sno, row.title, row.displayOrder, row.lastUpdate]),
         startY: tableStartY,
         margin: { left: 20 },
         styles: {
           fontSize: 10, // Adjust font size for table content
           cellWidth: "auto",
+          cellPadding: 3,
+          lineWidth: 0.2,
+          lineColor: [0, 0, 0],
+          overflow: "linebreak",
         },
         headStyles: {
-          fillColor: [0, 162, 51],  // Orange background
+          fillColor: [0, 162, 51], // Orange background
           textColor: [255, 255, 255], // White text
-          fontSize: 10,
+          fontSize: 11,
+          fontStyle: 'bold',
           halign: "center",
           valign: "middle", // Vertically aligns text in the center
           overflow: "linebreak", // Enables word wrapping
         },
         bodyStyles: {
-          fontSize: 9,
+          fontSize: 10,
           font: "meera-regular-unicode-font-normal",
           lineWidth: 0.2,
           lineColor: [0, 0, 0],
           halign: "left",
           valign: "middle",
-          overflow: "linebreak",
         },
-        styles: {
-          fontSize: 10,
-          cellPadding: 3,
-          lineWidth: 0.2,
-          lineColor: [0, 0, 0],
-          overflow: "linebreak", // Applies word wrapping globally
-        },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        tableLineColor: [0, 0, 0],
+        tableLineWidth: 0.1,
       });
 
       const totalPages = doc.internal.getNumberOfPages();
@@ -364,11 +398,14 @@ function Categories() {
         );
       }
 
-      doc.save(`Categories_Reports_${moment.utc(new Date()).local().format("DD-MM-YYYY")}.pdf`);
+      doc.save(
+        `Categories_Reports_${moment
+          .utc(new Date())
+          .local()
+          .format("DD-MM-YYYY")}.pdf`
+      );
     });
   };
-
-
 
   const column = useMemo(
     () => [
@@ -390,6 +427,7 @@ function Categories() {
           ),
       },
       { field: "title", headerName: "Title", width: 380 },
+      { field: "display_order", headerName: "Display Order", width: 100 },
       {
         field: "updated_at",
         headerName: "Last Update",
@@ -411,6 +449,7 @@ function Categories() {
               setisAddModel(false);
               settitle(params.row.title);
               setId(params.row.id);
+              setdisplayOrder(params.row.display_order);
               setimg(
                 params.row.image != null && `${image}/${params.row.image}`
               );
@@ -436,12 +475,15 @@ function Categories() {
           display: "flex",
           justifyContent: "space-between",
         }}
-        style={{ marginBottom: "1rem" }}>
-        <div style={{
-          display: "flex",
-          gap: "1rem",
-          alignItems: "center"
-        }}>
+        style={{ marginBottom: "1rem" }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            alignItems: "center",
+          }}
+        >
           <Button
             variant="contained"
             color="secondary"
@@ -465,6 +507,7 @@ function Categories() {
           onClick={() => {
             settitle("");
             setimgAdd();
+            setdisplayOrder(0);
             setisAddModel(true);
             handleOpen();
             setimg("");
@@ -496,22 +539,27 @@ function Categories() {
           {alertMsg}
         </Alert>
       </Snackbar>
-      < Box sx={{ height: " 100%", width: "100%" }
-      }>
+      <Box sx={{ height: " 100%", width: "100%" }}>
         <Box className="flex items-center flex-wrap justify-between gap-4 w-100 title-menu">
-          <Typography className=""
+          <Typography
+            className=""
             variant="h2"
             component={"h2"}
             fontWeight={600}
-            fontSize={'1.5rem'}
-            lineHeight={'2rem'}
+            fontSize={"1.5rem"}
+            lineHeight={"2rem"}
             sx={{
-              color: theme.palette.mode === 'dark' ? '#ffffffe6' : '#0e0e23',
+              color: theme.palette.mode === "dark" ? "#ffffffe6" : "#0e0e23",
             }}
           >
             Manage Categories
           </Typography>
-          <Box display={"flex"} alignItems={"center"} gap={"1rem"} width={"32.33%"}>
+          <Box
+            display={"flex"}
+            alignItems={"center"}
+            gap={"1rem"}
+            width={"32.33%"}
+          >
             <TextField
               size="small"
               sx={{ width: { xs: "80%", sm: "300px", md: "500px" } }}
@@ -525,34 +573,35 @@ function Categories() {
                 setSearchValue(e.target.value);
                 setTimeout(() => {
                   function searchArrayByValue(arr, searchQuery) {
-                    return arr.map((obj) => {
-                      const originalUpdatedAt = obj.updated_at;
-                      return {
-                        ...obj,
-                        updated_at_temp: moment
-                          .utc(obj.updated_at)
-                          .local()
-                          .format("DD-MM-YYYY HH:mm:ss"),
-                        originalUpdatedAt, // Keep the original date
-                      };
-                    }).filter((obj) => {
-                      return Object.values(obj).some((val) => {
-                        if (typeof val === "string") {
-                          return val
-                            .toLowerCase()
-                            .includes(searchQuery.toLowerCase());
-                        }
-                        if (typeof val === "number") {
-                          return val
-                            .toString()
-                            .includes(searchQuery)
-                        }
-                        return false;
-                      });
-                    })
+                    return arr
+                      .map((obj) => {
+                        const originalUpdatedAt = obj.updated_at;
+                        return {
+                          ...obj,
+                          updated_at_temp: moment
+                            .utc(obj.updated_at)
+                            .local()
+                            .format("DD-MM-YYYY HH:mm:ss"),
+                          originalUpdatedAt, // Keep the original date
+                        };
+                      })
+                      .filter((obj) => {
+                        return Object.values(obj).some((val) => {
+                          if (typeof val === "string") {
+                            return val
+                              .toLowerCase()
+                              .includes(searchQuery.toLowerCase());
+                          }
+                          if (typeof val === "number") {
+                            return val.toString().includes(searchQuery);
+                          }
+                          return false;
+                        });
+                      })
                       .map((obj) => {
                         // Revert the `updated_at` back to its original format
-                        const { originalUpdatedAt, updated_at_temp, ...rest } = obj; // Extract fields
+                        const { originalUpdatedAt, updated_at_temp, ...rest } =
+                          obj; // Extract fields
                         return {
                           ...rest,
                           updated_at: originalUpdatedAt, // Restore the original format
@@ -569,7 +618,9 @@ function Categories() {
         </Box>
 
         {categories ? (
-          <Box className={`text-card-foreground shadow-sm rounded-lg height-calc p-4 xl:p-2 ${theme.palette.mode === 'dark' ? "bg-darkcard" : "bg-card"
+          <Box
+            className={`text-card-foreground shadow-sm rounded-lg height-calc p-4 xl:p-2 ${
+              theme.palette.mode === "dark" ? "bg-darkcard" : "bg-card"
             }`}
             sx={{
               width: "100%",
@@ -588,7 +639,8 @@ function Categories() {
                 color: colors.greenAccent[300],
               },
               "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: theme.palette.mode === 'dark' ? "#334155" : "#0e0e23",
+                backgroundColor:
+                  theme.palette.mode === "dark" ? "#334155" : "#0e0e23",
                 borderBottom: "none",
                 color: "#f5f5f5",
               },
@@ -598,7 +650,8 @@ function Categories() {
               },
               "& .MuiDataGrid-footerContainer": {
                 borderTop: "none",
-                backgroundColor: theme.palette.mode === 'dark' ? "#334155" : "#0e0e23",
+                backgroundColor:
+                  theme.palette.mode === "dark" ? "#334155" : "#0e0e23",
                 color: "#f5f5f5",
               },
               "& .MuiTablePagination-root": {
@@ -661,7 +714,26 @@ function Categories() {
                   settitle(e.target.value);
                 }}
               />
-
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="Display order"
+                label="Display order"
+                color="secondary"
+                name="Display order"
+                type="number"
+                autoFocus
+                value={displayOrder}
+                size="small"
+                inputProps={{ min: 1 }}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || Number(value) >= 1) {
+                    setdisplayOrder(value);
+                  }
+                }}
+              />
               <input
                 style={{
                   marginTop: "20px",
@@ -698,7 +770,13 @@ function Categories() {
                 />
               )}
 
-              <Button color="update" variant="contained" type="submit" disabled={isUpdating} sx={{ mt: 2, fontWeight: "700", width: "100%" }}>
+              <Button
+                color="update"
+                variant="contained"
+                type="submit"
+                disabled={isUpdating}
+                sx={{ mt: 2, fontWeight: "700", width: "100%" }}
+              >
                 {isUpdating ? (
                   <CircularProgress color="inherit" />
                 ) : (
@@ -738,6 +816,26 @@ function Categories() {
                   value={Id}
                   disabled
                   size="small"
+                />
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="Display order"
+                  label="Display order"
+                  color="secondary"
+                  name="Display order"
+                  type="number"
+                  autoFocus
+                  value={displayOrder}
+                  size="small"
+                  inputProps={{ min: 1 }}
+                  onChange={(e) => {                  
+                    const value = e.target.value;
+                    if (value === '' || Number(value) >= 1) {
+                      setdisplayOrder(value);
+                    }
+                  }}
                 />
                 {!imgId && (
                   <input
@@ -871,7 +969,12 @@ function Categories() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDailogClose} color="primary" variant="contained" size="small">
+          <Button
+            onClick={handleDailogClose}
+            color="primary"
+            variant="contained"
+            size="small"
+          >
             Cancel
           </Button>
 
@@ -886,7 +989,7 @@ function Categories() {
           </Button>
         </DialogActions>
       </Dialog>
-    </div >
+    </div>
   );
 }
 

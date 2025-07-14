@@ -120,4 +120,24 @@ const UPLOAD = async (token, url, data) => {
   }
 };
 
-export { GET, ADD, DELETE, UPDATE, UPLOAD, ADDMulti };
+const PUT = async (token, url, data) => {
+  var config = {
+    method: "put",
+    maxBodyLength: Infinity,
+    url: url,
+    headers: {
+      Authorization: token,
+      "Content-Type": "application/json",
+    },
+    data: data,
+  };
+  try {
+    const response = await axios(config);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
+
+export { GET, ADD, DELETE, UPDATE, UPLOAD, ADDMulti, PUT };

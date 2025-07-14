@@ -70,6 +70,7 @@ import AssignExecutiveOrders from "../Pages/Delivery/AssignExecutiveOrders";
 import DeliveryReAssigneRequest from "../Pages/Delivery/DeliveryReAssigneRequest";
 import OrderProductList from "../Pages/Orders/OrderProductList";
 import ViewOrdersDeliveries from "../Pages/Delivery/ViewOrdersDeliveries";
+import Coupons from "../Pages/Coupons/Coupons";
 
 function Dashboard() {
   const user = Utils.getUserData();
@@ -458,7 +459,10 @@ function Dashboard() {
           path="/AssignDeliveryOrders"
           element={<AssignDeliveryOrders />}
         />
-        <Route path="/ViewOrdersDeliveries" element={<ViewOrdersDeliveries />} />
+        <Route
+          path="/ViewOrdersDeliveries"
+          element={<ViewOrdersDeliveries />}
+        />
         <Route
           path="/AssignExecutiveOrders"
           element={<AssignExecutiveOrders />}
@@ -585,6 +589,14 @@ function Dashboard() {
           element={
             <ProtectedRoute condition={isAdmin}>
               <Testimonial />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/Coupons"
+          element={
+            <ProtectedRoute condition={isAdmin}>
+              <Coupons />
             </ProtectedRoute>
           }
         />

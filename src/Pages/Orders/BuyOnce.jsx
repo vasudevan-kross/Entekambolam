@@ -137,8 +137,8 @@ function BuyOnceOrders() {
 
   const column = useMemo(
     () => [
-      { field: "order_number", headerName: "ID", width: 120, cellClassName: "sticky-col-1", },
-      { field: "name", headerName: "Customer Name", width: 150, cellClassName: "sticky-col-2", },
+      { field: "order_number", headerName: "ID", width: 120, cellClassName: () => theme.palette.mode === "dark" ? "sticky-col-3" : "sticky-col-1"  },
+      { field: "name", headerName: "Customer Name", width: 150, cellClassName: () => theme.palette.mode === "dark" ? "sticky-col-4" : "sticky-col-2" },
       {
         field: "s_phone", headerName: "Phone Number", width: 120,
         renderHeader: () => (
@@ -224,30 +224,6 @@ function BuyOnceOrders() {
             ? moment.utc(params.row?.delivery_date).local().format("DD-MM-YYYY")
             : "--",
       },
-      // {
-      //   field: "image",
-      //   headerName: "Image",
-      //   width: 100,
-      //   height: 100,
-      //   renderCell: (params) =>
-      //     params.row.product_image != null ? (
-      //       <div
-      //         style={{
-      //           display: "flex",
-      //           justifyContent: "center",
-      //           width: "100%",
-      //         }}
-      //       >
-      //         <img
-      //           src={`${image}/${params.row.product_image}`}
-      //           alt={params.row.product_image}
-      //           height={"45px"}
-      //         />
-      //       </div>
-      //     ) : (
-      //       <i class="fa-regular fa-image" style={{ fontSize: "22px" }}></i>
-      //     ),
-      // },
       {
         field: "order_type",
         headerName: "Order Type",
@@ -302,14 +278,6 @@ function BuyOnceOrders() {
           </p>
         ),
       },
-      // {
-      //   field: "wallet_amount",
-      //   headerName: "Wallet Amount",
-      //   width: 100,
-      //   renderCell: (params) => (
-      //     <p>{params.row?.wallet_amount?.toFixed(2) || "0.00"}</p>
-      //   ),
-      // },
       {
         field: "pincode", headerName: "Pincode", width: 100,
         renderHeader: () => (
@@ -330,16 +298,6 @@ function BuyOnceOrders() {
           </Tooltip>
         ),
       },
-      // {
-      //   field: "updated_at",
-      //   headerName: "Last Update",
-      //   width: 220,
-      //   renderCell: (params) =>
-      //     moment
-      //       .utc(params.row.updated_at)
-      //       .local()
-      //       .format("DD-MM-YYYY HH:mm:ss"),
-      // },
       {
         field: "Action",
         headerName: "Action",
@@ -366,7 +324,7 @@ function BuyOnceOrders() {
         ),
       },
     ],
-    [navigate]
+    [navigate, theme.palette.mode]
   );
 
   const exportToCSV = () => {
@@ -890,7 +848,7 @@ function BuyOnceOrders() {
               }}
             />
 
-            <span className="idColumn"><Tooltip title="ID" arrow>ID</Tooltip>
+            <span className={theme.palette.mode === "dark" ? "idColumn addcolor" : "idColumn"}><Tooltip title="ID" arrow>ID</Tooltip>
               <span class="MuiDataGrid-columnSeparator MuiDataGrid-columnSeparator--sideRight" style={{ minHeight: '56px', opacity: '1', display: 'flex', alignItems: 'center' }}>
                 <svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiDataGrid-iconSeparator css-bac4tg-MuiSvgIcon-root" focusable="false" aria-hidden="true" viewBox="0 0 24 24" data-testid="SeparatorIcon"><path d="M11 19V5h2v14z"></path></svg>
               </span>
@@ -898,7 +856,7 @@ function BuyOnceOrders() {
 
             
 
-              <span className="nameColumn"><Tooltip title="Name" arrow>Name</Tooltip>
+              <span className={theme.palette.mode === "dark" ? "nameColumn addcolor" : "nameColumn"}><Tooltip title="Name" arrow>Name</Tooltip>
                 <span class="MuiDataGrid-columnSeparator MuiDataGrid-columnSeparator--sideRight" style={{ minHeight: '56px', opacity: '1', display: 'flex', alignItems: 'center' }}>
                   <svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiDataGrid-iconSeparator css-bac4tg-MuiSvgIcon-root" focusable="false" aria-hidden="true" viewBox="0 0 24 24" data-testid="SeparatorIcon"><path d="M11 19V5h2v14z"></path></svg>
                 </span>

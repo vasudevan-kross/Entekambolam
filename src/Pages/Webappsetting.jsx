@@ -594,7 +594,7 @@ function Webappsetting() {
                   )}
                 </div>
               </>
-            ) : [11, 13].includes(Id) ? (
+            ) : [11, 13, 20].includes(Id) ? (
               <FormControlLabel
                 control={
                   <Switch

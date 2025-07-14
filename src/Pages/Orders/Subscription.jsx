@@ -78,9 +78,7 @@ function SubscriptionOrders() {
     () => [
       {
         field: "order_number",
-        headerName: "ID",
-        width: 120,
-        cellClassName: "sticky-col-1",
+        headerName: "ID", width: 120, cellClassName: () => theme.palette.mode === "dark" ? "sticky-col-3" : "sticky-col-1",
         renderHeader: () => (
           <Tooltip title="Number of completed deliveries for the order" arrow>
             <Typography variant="body2" sx={{ fontWeight: "bold" }}>
@@ -93,7 +91,7 @@ function SubscriptionOrders() {
         field: "name",
         headerName: "Customer Name",
         width: 150,
-        cellClassName: "sticky-col-2",
+        cellClassName: () => theme.palette.mode === "dark" ? "sticky-col-4" : "sticky-col-2",
       },
       {
         field: "s_phone", headerName: "Ph. Number", width: 120,
@@ -110,7 +108,7 @@ function SubscriptionOrders() {
         headerName: "Qty",
         width: 50,
         sortable: false,
-        disableColumnMenu:true,
+        disableColumnMenu: true,
         renderHeader: () => (
           <Tooltip title="Quantity" arrow>
             <Typography className="fs-13">
@@ -421,7 +419,7 @@ function SubscriptionOrders() {
         ),
       },
     ],
-    [navigate]
+    [navigate, theme.palette.mode]
   );
 
   const getSubscriptionAlert = (row) => {
@@ -1083,8 +1081,8 @@ function SubscriptionOrders() {
               disableVirtualization
             />
 
-            <span className="idColumn">
-             <Tooltip title="ID" arrow>ID</Tooltip>
+            <span className={theme.palette.mode === "dark" ? "idColumn addcolor" : "idColumn"}>
+              <Tooltip title="ID" arrow>ID</Tooltip>
               <span
                 class="MuiDataGrid-columnSeparator MuiDataGrid-columnSeparator--sideRight"
                 style={{
@@ -1106,7 +1104,7 @@ function SubscriptionOrders() {
               </span>
             </span>
 
-            <span className="nameColumn">
+            <span className={theme.palette.mode === "dark" ? "nameColumn addcolor" : "nameColumn"}>
               <Tooltip title="Name" arrow>Name</Tooltip>
               <span
                 class="MuiDataGrid-columnSeparator MuiDataGrid-columnSeparator--sideRight"

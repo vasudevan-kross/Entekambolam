@@ -302,10 +302,12 @@ function Transaction() {
             {params.row.type === 1
               ? "Credit"
               : params.row.type === 2
-                ? "Debit"
-                : params.row.type === 3
-                  ? "Refund"
-                  : ""}
+              ? "Debit"
+              : params.row.type === 3
+              ? "Refund"
+              : params.row.type === 4
+              ? "Referral"
+              : ""}
           </p>
         ),
       },
@@ -365,10 +367,12 @@ function Transaction() {
       row.type === 1
         ? "Credit"
         : row.type === 2
-          ? "Debit"
-          : row.type === 3
-            ? "Refund"
-            : "N/A",
+        ? "Debit"
+        : row.type === 3
+        ? "Refund"
+        : row.type === 4
+        ? "Referral"
+        : "N/A",
       moment(row.updated_at).format("DD-MM-YYYY HH:mm:ss"),
     ]);
 
@@ -439,10 +443,12 @@ function Transaction() {
           row.type === 1
             ? "Credit"
             : row.type === 2
-              ? "Debit"
-              : row.type === 3
-                ? "Refund"
-                : "N/A",
+            ? "Debit"
+            : row.type === 3
+            ? "Refund"
+            : row.type === 4
+            ? "Referral"
+            : "N/A",
         updated_at: moment(row.updated_at).format("DD-MM-YYYY HH:mm:ss"),
       }));
 
@@ -510,15 +516,20 @@ function Transaction() {
     return arr
       .map((obj) => ({
         ...obj,
-        updated_at_temp: moment.utc(obj.updated_at).local().format("DD-MM-YYYY HH:mm:ss"),
+        updated_at_temp: moment
+          .utc(obj.updated_at)
+          .local()
+          .format("DD-MM-YYYY HH:mm:ss"),
         type_temp:
           obj.type === 1
             ? CONSTANTS.PAYMENT_TYPES.CREDIT
             : obj.type === 2
-              ? CONSTANTS.PAYMENT_TYPES.DEBIT
-              : obj.type === 3
-                ? CONSTANTS.PAYMENT_TYPES.REFUND
-                : "",
+            ? CONSTANTS.PAYMENT_TYPES.DEBIT
+            : obj.type === 3
+            ? CONSTANTS.PAYMENT_TYPES.REFUND
+            : obj.type === 4
+            ? CONSTANTS.PAYMENT_TYPES.REFERRAL
+            : "",
       }))
       .filter((obj) => {
         return Object.values(obj).some((val) => {
@@ -712,7 +723,7 @@ function Transaction() {
           <Box
             className={`text-card-foreground shadow-sm rounded-lg height-calc p-4 xl:p-2 ${
               theme.palette.mode === "dark" ? "bg-darkcard" : "bg-card"
-              }`}
+            }`}
             sx={{
               width: "100%",
               height: "100%",

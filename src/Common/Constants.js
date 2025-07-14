@@ -65,6 +65,7 @@ export const PAYMENT_TYPES = {
   CREDIT: "Credit",
   DEBIT: "Debit",
   REFUND: "Refund",
+  REFERRAL: "Referral",
 };
 
 export const CityOptions = [

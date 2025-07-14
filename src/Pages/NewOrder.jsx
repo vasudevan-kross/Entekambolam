@@ -48,6 +48,7 @@ function NewOrder() {
   const [MRP, setMRP] = useState(0);
   const [tax, settax] = useState(0);
   const [orderAmount, setorderAmount] = useState(0);
+  const [originalOrderAmount, setOriginalOrderAmount] = useState(0);
   const [date, setdate] = useState();
   const [addressID, setaddressID] = useState();
   const [quantity, setquantity] = useState(1);
@@ -84,6 +85,13 @@ function NewOrder() {
   const [startDayCode, setStartDayCode] = useState();
   const [isUserLoading, setIsUserLoading] = useState(false);
   const [isAddressLoading, setIsAddressLoading] = useState(false);
+  const [coupons, setCoupons] = useState([]);
+  const [filteredCoupons, setFilteredCoupons] = useState([]);
+  const [couponCode, setCouponCode] = useState("");
+  const [selectedCoupon, setSelectedCoupon] = useState(null);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponValidating, setCouponValidating] = useState(false);
 
   // days state
   const [M, setM] = useState();
@@ -251,10 +259,58 @@ function NewOrder() {
     resetOrderStates();
   }, [orderType, products]);
 
+  const getAvailableCoupons = async (userId) => {
+    setLOADING(true);
+    try {
+      if (!userId) {
+        setCoupons([]);
+        setFilteredCoupons([]);
+        return;
+      }
+      const url = `${api}/get_available_coupons?user_id=${userId}`;
+      const res = await GET(token, url);
+      if (res?.data) {
+        setCoupons(res.data);
+        setFilteredCoupons(res.data);
+      } else {
+        setCoupons([]);
+        setFilteredCoupons([]);
+        clearCouponSelection();
+      }
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      setCoupons([]);
+      setFilteredCoupons([]);
+      clearCouponSelection();
+    } finally {
+      setLOADING(false);
+    }
+  };
+
+  useEffect(() => {
+    clearCouponSelection();
+    if (userId) {
+      getAvailableCoupons(userId);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!originalOrderAmount) {
+      clearCouponSelection();
+      return;
+    }
+    if (appliedCoupon) {
+      validateCoupon(appliedCoupon);
+    } else {
+      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+    }
+  }, [appliedCoupon, originalOrderAmount]);
+
   const resetOrderStates = () => {
     setprice(0);
     setMRP(0);
     setorderAmount(0);
+    setOriginalOrderAmount(0);
     setquantity(0);
     setsubsType("");
     settax(0);
@@ -478,6 +534,7 @@ function NewOrder() {
           product_detail: productDetail,
           delivery_charge: deliveryAmount,
           delivery_instruction: deliveryInstruction || "",
+          coupon_id: appliedCoupon ? appliedCoupon.id : null,
         };
 
         url = `${api}/add_order`;
@@ -551,6 +608,7 @@ function NewOrder() {
         product_detail: productDetail,
         delivery_charge: deliveryAmount,
         delivery_instruction: deliveryInstruction || "",
+        coupon_id: appliedCoupon ? appliedCoupon.id : null,
       };
 
       const url = `${api}/add_order`;
@@ -640,9 +698,9 @@ function NewOrder() {
       freeDeliveryMax > 0 && totalPrice > 0 && totalPrice > freeDeliveryMax
         ? 0
         : oneTimeDeliveryCharge;
-    setorderAmount(
-      parseFloat(totalPrice + calculatedDeliveryAmount).toFixed(2)
-    );
+    const finalAmount = parseFloat(totalPrice + calculatedDeliveryAmount).toFixed(2);
+    setorderAmount(finalAmount);
+    setOriginalOrderAmount(finalAmount);
     setDeliveryAmount(calculatedDeliveryAmount);
     setquantity(parseInt(totalQuantity));
     setSelectedProducts(productList);
@@ -655,7 +713,9 @@ function NewOrder() {
     if ([1, 3, 4].includes(subsType)) {
       const orderAmount =
         ((taxPrice + price) * qty + deliveryCharge) * orderDays;
-      setorderAmount(parseFloat(orderAmount).toFixed(2));
+      const finalAmount = parseFloat(orderAmount).toFixed(2);
+      setorderAmount(finalAmount);
+      setOriginalOrderAmount(finalAmount);
       const deliveryAmt = deliveryCharge * orderDays;
       setDeliveryAmount(deliveryAmt);
     }
@@ -672,9 +732,12 @@ function NewOrder() {
         ((taxPrice + price) * quantity + deliveryCharge) * orderDays;
       const deliveryAmt = deliveryCharge * orderDays;
       setDeliveryAmount(deliveryAmt);
-      setorderAmount(parseFloat(orderAmount).toFixed(2));
+      const finalAmount = parseFloat(orderAmount).toFixed(2);
+      setorderAmount(finalAmount);
+      setOriginalOrderAmount(finalAmount);
     } else {
       setorderAmount(0);
+      setOriginalOrderAmount(0);
       setquantity(0);
       setDeliveryAmount(0);
       setCalcAmt(false);
@@ -730,7 +793,9 @@ function NewOrder() {
     totalAmt = (taxPrice + price) * totalQty + subDeliveryAmount;
     setDeliveryAmount(subDeliveryAmount);
     setquantity(totalQty);
-    setorderAmount(parseFloat(totalAmt).toFixed(2));
+    const finalAmount = parseFloat(totalAmt).toFixed(2);
+    setorderAmount(finalAmount);
+    setOriginalOrderAmount(finalAmount);
     setCalcAmt(true);
   };
 
@@ -742,6 +807,98 @@ function NewOrder() {
       setdate(nextDay);
     } else {
       setdate(null);
+    }
+  };
+
+  const clearCouponSelection = () => {
+    setSelectedCoupon(null);
+    setCouponCode("");
+    setAppliedCoupon(null);
+    setCouponError("");
+    setFilteredCoupons(coupons);
+    setCouponValidating(false);
+    // Reset to original amount
+    setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+  };
+
+  const validateCoupon = async (coupon) => {
+    if (!coupon || !userId) return;
+
+    if (coupon.min_cart_value && parseFloat(originalOrderAmount) < parseFloat(coupon.min_cart_value)) {
+      setCouponError(`Minimum cart value for this coupon is ₹${coupon.min_cart_value}`);
+      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+      return;
+    }
+
+    try {
+      setCouponValidating(true);
+      const response = await ADD(token, `${api}/validate_coupon`, {
+        code: coupon.code,
+        user_id: userId,
+        cart_total: originalOrderAmount
+      });
+
+      if (response?.response === 200) {
+        const discount = response.data?.discount || 0;
+        setCouponError("");
+        setorderAmount(parseFloat(originalOrderAmount - discount).toFixed(2));
+      } else {
+        setCouponError(response?.message || 'Invalid coupon code');
+        setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+      }
+    } catch (error) {
+      console.error('Coupon validation error:', error);
+      setCouponError('Something went wrong. Please try again.');
+      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  const handleCouponChange = async (e, value, reason) => {
+    if (reason === 'clear' || !value) {
+      clearCouponSelection();
+      return;
+    }
+    setCouponError("");
+    setFilteredCoupons(coupons);
+    
+    if (typeof value === 'string') {
+    setSelectedCoupon(null);
+    setCouponCode(value);
+    setAppliedCoupon(null); 
+    return;
+  }
+    if (value && typeof value === 'object') {      
+    setSelectedCoupon(value);    
+    setAppliedCoupon(value);
+    setCouponCode(value.code);
+    }
+  };
+
+
+
+  const handleCouponInputChange = (newInputValue, reason) => {
+    if (reason === 'clear' || !newInputValue) {
+      clearCouponSelection();
+      return;
+    }
+    if (reason !== 'input') return;
+    setCouponCode(newInputValue);
+    setSelectedCoupon(null);
+    setAppliedCoupon(null);
+    if (couponError) {
+      setCouponError("");
+    }
+    if (coupons && coupons.length > 0) {
+      const search = (newInputValue || '').toLowerCase();
+      const filtered = coupons.filter(coupon => {
+        if (!coupon) return false;
+        const code = coupon.code ? coupon.code.toLowerCase() : '';
+        const desc = coupon.description ? coupon.description.toLowerCase() : '';
+        return code.includes(search) || desc.includes(search);
+      });
+      setFilteredCoupons(filtered);
     }
   };
   return (
@@ -821,9 +978,8 @@ function NewOrder() {
                 color: theme.palette.mode === "dark" ? "#ffffffe6" : "#0e0e23",
               }}
             >
-              {`Order Details - ${
-                orderType === 0 ? "Subscription Order" : "Buy Once"
-              }`}
+              {`Order Details - ${orderType === 0 ? "Subscription Order" : "Buy Once"
+                }`}
             </Typography>
             <Typography
               className="mb1"
@@ -847,12 +1003,11 @@ function NewOrder() {
                   options={users}
                   disabled={isUserLoading} // Pass loading state
                   onChange={(e, data) => {
-                    setuserId(data.id);
-                    if (data?.id) getAddress(data.id);
+                    setuserId(data?.id);
+                    if (data?.id) getAddress(data?.id);
                   }}
                   getOptionLabel={(option) =>
-                    `${option?.name} (${
-                      option?.phone ? option?.phone : option?.email
+                    `${option?.name} (${option?.phone ? option?.phone : option?.email
                     })` || ""
                   }
                   renderInput={(params) => (
@@ -914,6 +1069,18 @@ function NewOrder() {
                     color="secondary"
                     options={filteredProducts || []}
                     onChange={(e, data) => {
+                      if (!data) {
+                        setproductId(null);
+                        setprice(0);
+                        setMRP(0);
+                        setquantity(0);
+                        setDeliveryAmount(0);
+                        setsubsType("");
+                        settax(0);
+                        setorderAmount(0);
+                        setOriginalOrderAmount(0);
+                        return;
+                      }
                       setproductId(data.id);
                       setprice(data.price);
                       setMRP(data.mrp);
@@ -921,11 +1088,11 @@ function NewOrder() {
                       setDeliveryAmount(0);
                       setsubsType("");
                       settax(data.tax);
-                      setorderAmount(
-                        parseFloat(
-                          (data.price * data.tax) / 100 + data.price
-                        ).toFixed(2)
-                      );
+                      const amount = parseFloat(
+                        (data.price * data.tax) / 100 + data.price
+                      ).toFixed(2);
+                      setorderAmount(amount);
+                      setOriginalOrderAmount(amount);
                     }}
                     getOptionLabel={(option) =>
                       `${option?.title} (${option?.qty_text})` || ""
@@ -1003,17 +1170,17 @@ function NewOrder() {
                             );
                             const calculatedDeliveryAmount =
                               freeDeliveryMax > 0 &&
-                              totalPrice > 0 &&
-                              totalPrice > freeDeliveryMax
+                                totalPrice > 0 &&
+                                totalPrice > freeDeliveryMax
                                 ? 0
                                 : oneTimeDeliveryCharge;
                             setprice(parseFloat(totalPrice).toFixed(2));
                             setMRP(parseFloat(totalPrice).toFixed(2));
-                            setorderAmount(
-                              parseFloat(
-                                totalPrice + calculatedDeliveryAmount
-                              ).toFixed(2)
-                            );
+                            const amount = parseFloat(
+                              totalPrice + calculatedDeliveryAmount
+                            ).toFixed(2);
+                            setorderAmount(amount);
+                            setOriginalOrderAmount(amount);
                             setDeliveryAmount(calculatedDeliveryAmount);
                             setquantity(parseInt(totalQuantity));
                             return updatedSelection;
@@ -1046,10 +1213,10 @@ function NewOrder() {
                         renderTags={(selected) =>
                           selected.length > 0
                             ? `${selected
-                                .map(
-                                  (item) => `${item.title.substring(0, 20)}...`
-                                )
-                                .join(", ")}`
+                              .map(
+                                (item) => `${item.title.substring(0, 20)}...`
+                              )
+                              .join(", ")}`
                             : ""
                         }
                       />
@@ -1420,6 +1587,7 @@ function NewOrder() {
                           onClick={() => {
                             setM(M ? null : 1);
                             setorderAmount(0);
+                            setOriginalOrderAmount(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1432,6 +1600,7 @@ function NewOrder() {
                           onClick={() => {
                             setT(T ? null : 2);
                             setorderAmount(0);
+                            setOriginalOrderAmount(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1444,6 +1613,7 @@ function NewOrder() {
                           onClick={() => {
                             setW(W ? null : 3);
                             setorderAmount(0);
+                            setOriginalOrderAmount(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1456,6 +1626,7 @@ function NewOrder() {
                           onClick={() => {
                             setTH(TH ? null : 4);
                             setorderAmount(0);
+                            setOriginalOrderAmount(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1468,6 +1639,7 @@ function NewOrder() {
                           onClick={() => {
                             setF(F ? null : 5);
                             setorderAmount(0);
+                            setOriginalOrderAmount(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1480,6 +1652,7 @@ function NewOrder() {
                           onClick={() => {
                             setS(S ? null : 6);
                             setorderAmount(0);
+                            setOriginalOrderAmount(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1492,6 +1665,7 @@ function NewOrder() {
                           onClick={() => {
                             setSU(SU === 1 ? 0 : 1);
                             setorderAmount(0);
+                            setOriginalOrderAmount(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1520,6 +1694,7 @@ function NewOrder() {
                                     onClick={() => {
                                       s.remove();
                                       setorderAmount(0);
+                                      setOriginalOrderAmount(0);
                                       setquantity(0);
                                       setDeliveryAmount(0);
                                       setCalcAmt(false);
@@ -1548,6 +1723,7 @@ function NewOrder() {
                                         // Check if the quantity is less than 20
                                         s.add();
                                         setorderAmount(0);
+                                        setOriginalOrderAmount(0);
                                         setquantity(0);
                                         setDeliveryAmount(0);
                                         setCalcAmt(false);
@@ -1733,6 +1909,104 @@ function NewOrder() {
                       setpincode(e.target.value);
                     }}
                   />
+                </Grid>
+              </Grid>
+            </div>
+          </div>
+        )}
+
+        {/* Coupon Code Section */}
+        {coupons && coupons.length > 0 && userId && originalOrderAmount > 0 && (
+          <div className="product">
+            <div
+              className="left"
+              style={{
+                backgroundColor: colors.cardBG[400],
+                maxWidth: "100%",
+              }}
+            >
+              <Typography
+                className="mb1"
+                variant="h3"
+                component={"h3"}
+                fontWeight={600}
+                lineHeight={"2rem"}
+                sx={{
+                  color:
+                    theme.palette.mode === "dark" ? "#ffffffe6" : "#0e0e23",
+                }}
+              >
+                Select Coupon Code
+              </Typography>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={6} >
+                  <Autocomplete
+                    id="coupon-autocomplete"
+                    options={Array.isArray(filteredCoupons) ? filteredCoupons : []}
+                    getOptionLabel={(option) =>
+                      typeof option === 'string' ? option : option?.code || ''
+                    }
+                    value={typeof selectedCoupon === 'string' || !selectedCoupon ? null : selectedCoupon}
+                    fullWidth
+                    freeSolo
+                    renderOption={(props, option) => {
+                      if (!option || typeof option !== 'object') return null;
+                      return (
+                        <li {...props}>
+                          <Box display="flex" flexDirection="column">
+                            <span style={{ fontWeight: 600 }}>{option.code}</span>
+                            <span style={{ fontSize: 13, color: '#888' }}>{option.description}</span>
+                            <span style={{ fontSize: 12, color: '#666' }}>
+                              {option.type === 1 ? `₹${option.value} off` : `${option.value}% off`} | Min Cart: ₹{option.min_cart_value}
+                            </span>
+                            <span style={{ fontSize: 12, color: option.is_active ? 'green' : 'red' }}>
+                              {option.is_active ? 'Active' : 'Inactive'} | Expires: {option.expires_at ? option.expires_at.split('T')[0] : 'N/A'}
+                            </span>
+                          </Box>
+                        </li>
+                      );
+                    }}
+                    onChange={handleCouponChange}
+                    onInputChange={(event, newInputValue, reason) => {
+                      handleCouponInputChange(newInputValue, reason);
+                    }}
+                    inputValue={couponCode}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Coupon Code"
+                        placeholder="Enter or select coupon code"
+                        size="small"
+                        fullWidth
+                        color="secondary"
+                        error={!!couponError}
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {couponValidating ? <CircularProgress size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  {couponValidating ? (
+                    <Typography color="info.main" sx={{ fontSize: 14, ml: 1 }}>
+                      Validating coupon...
+                    </Typography>
+                  ) : couponError ? (
+                    <Typography color="error" sx={{ fontSize: 14, ml: 1 }}>
+                      {couponError}
+                    </Typography>
+                  ) : appliedCoupon ? (
+                    <Typography color="success.main" sx={{ fontSize: 14, ml: 1 }}>
+                      Coupon "{appliedCoupon.code}" applied successfully!
+                    </Typography>
+                  ) : null}
                 </Grid>
               </Grid>
             </div>
