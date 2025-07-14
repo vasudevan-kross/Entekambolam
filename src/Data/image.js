@@ -1,3 +1,3 @@
 import apiAddress from "./apiAddress";
-const image = `${apiAddress}/public/uploads/images`;
+const image = `${apiAddress}/uploads/images`;
 export default image;
