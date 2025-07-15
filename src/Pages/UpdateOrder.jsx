@@ -2339,6 +2339,31 @@ function UpdateOrder() {
                   </Button>
                 )}
               </Box>
+              <Box
+                display={"flex"}
+                alignItems="center"
+                justifyContent={"space-between"}
+                gap="20px"
+                mt="30px"
+              >
+                <TextField
+                  margin="normal"
+                  disabled
+                  required
+                  fullWidth
+                  id="discountAmount"
+                  label="Discount Amount"
+                  name="Discount Amount"
+                  type="number"
+                  color="secondary"
+                  autoComplete="number"
+                  size="small"
+                  InputProps={{ inputProps: { min: 0 } }}
+                  value={parseFloat(
+                    orderData.coupon_discount_value || 0
+                  ).toFixed(2)}
+                />
+              </Box>
               {deliveryInstruction && deliveryInstruction.trim() !== "" && (
                 <Box mt="30px">
                   <Typography fontWeight="bold" mr={1}>

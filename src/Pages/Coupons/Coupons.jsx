@@ -49,25 +49,26 @@ function Coupons() {
     expires_at: "",
     description: "",
     is_active: true,
+    max_discount_amount: 0,
     first_time_user_only: false,
   });
 
   const admin = JSON.parse(sessionStorage.getItem("admin"));
   const token = `Bearer ${admin.token}`;
 
-  const getToday = () => new Date().toISOString().split('T')[0];
+  const getToday = () => new Date().toISOString().split("T")[0];
 
   const getMinStartDate = () => {
     const today = getToday();
     if (editingId && form.start_at) {
-      const startDate = form.start_at.split('T')[0];
+      const startDate = form.start_at.split("T")[0];
       return startDate < today ? startDate : today;
     }
     return today;
   };
 
   const getMinExpiryDate = () => {
-    return form.start_at ? form.start_at.split('T')[0] : getToday();
+    return form.start_at ? form.start_at.split("T")[0] : getToday();
   };
 
   const handleSnackbar = (type, msg) => {
@@ -136,6 +137,7 @@ function Coupons() {
           max_uses_per_user: "",
           is_active: true,
           first_time_user_only: false,
+          max_discount_amount: 0,
           start_at: "",
           expires_at: "",
           description: "",
@@ -165,6 +167,7 @@ function Coupons() {
       max_uses_per_user: "",
       is_active: true,
       first_time_user_only: false,
+      max_discount_amount: 0,
       start_at: "",
       expires_at: "",
       description: "",
@@ -183,6 +186,7 @@ function Coupons() {
       max_uses_per_user: coupon.max_uses_per_user || "",
       is_active: coupon.is_active,
       first_time_user_only: coupon.first_time_user_only,
+      max_discount_amount: coupon.max_discount_amount || 0,
       start_at: coupon.start_at || "",
       expires_at: coupon.expires_at || "",
       description: coupon.description || "",
@@ -214,7 +218,12 @@ function Coupons() {
         flex: 1,
         renderCell: ({ row }) => row.min_cart_value || "N/A",
       },
-
+      {
+        field: "max_discount_amount",
+        headerName: "Max Discount Amount",
+        flex: 1,
+        renderCell: ({ row }) => row.max_discount_amount || "N/A",
+      },
       {
         field: "max_uses_per_user",
         headerName: "Per User Limit",
@@ -236,11 +245,12 @@ function Coupons() {
         flex: 1.2,
         renderCell: ({ row }) => {
           if (!row.expires_at) return "N/A";
-          
-          const today = dayjs().startOf('day');
-          const expiryDate = dayjs(row.expires_at).startOf('day');
-          const isExpiredToday = expiryDate.isSame(today) || expiryDate.isBefore(today);
-          
+
+          const today = dayjs().startOf("day");
+          const expiryDate = dayjs(row.expires_at).startOf("day");
+          const isExpiredToday =
+            expiryDate.isSame(today) || expiryDate.isBefore(today);
+
           return (
             <span
               style={{
@@ -255,7 +265,7 @@ function Coupons() {
       },
       {
         field: "first_time_user_only",
-        headerName: "Fisrst Time Only",
+        headerName: "First Time Only",
         flex: 1,
         renderCell: ({ row }) => (
           <span
@@ -449,7 +459,8 @@ function Coupons() {
               padding: 0,
               color: theme.palette.mode === "dark" ? "#fff" : "#000",
               "&:hover": {
-                backgroundColor: theme.palette.mode === "dark" ? "#333" : "#f0f0f0",
+                backgroundColor:
+                  theme.palette.mode === "dark" ? "#333" : "#f0f0f0",
               },
               zIndex: 1,
             }}
@@ -471,7 +482,9 @@ function Coupons() {
                 fullWidth
               />
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box
+                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+              >
                 <FormControl fullWidth>
                   <InputLabel id="coupon-type-label">Type</InputLabel>
                   <Select
@@ -494,9 +507,36 @@ function Coupons() {
                   onChange={(e) => setForm({ ...form, value: e.target.value })}
                   fullWidth
                 />
+                {form.type === 2 && (
+                  <>
+                    <TextField
+                      label="Max Discount Amount"
+                      type="number"
+                      required
+                      value={form.max_discount_amount}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          max_discount_amount: e.target.value,
+                        })
+                      }
+                      fullWidth
+                    />
+                    <Typography
+                      variant="body2"
+                      style={{ color: "red", marginTop: "4px" }}
+                    >
+                      Note: If "Max Discount Amount" = 0, the discount is
+                      applied fully based on the set %. If a value is set (e.g.,
+                      100), the discount is capped at that amount.
+                    </Typography>
+                  </>
+                )}
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box
+                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+              >
                 <TextField
                   label="Minimum Cart Value"
                   type="number"
@@ -507,7 +547,6 @@ function Coupons() {
                   }
                   fullWidth
                 />
-
                 <TextField
                   label="Max usage limit per user"
                   type="number"
@@ -520,7 +559,9 @@ function Coupons() {
                 />
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box
+                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+              >
                 <TextField
                   label="Start Date"
                   type="date"
@@ -529,13 +570,15 @@ function Coupons() {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      start_at: e.target.value ? `${e.target.value}T00:00:00` : "",
+                      start_at: e.target.value
+                        ? `${e.target.value}T00:00:00`
+                        : "",
                     })
                   }
                   fullWidth
                   InputLabelProps={{ shrink: true }}
                   inputProps={{
-                    min: getMinStartDate()
+                    min: getMinStartDate(),
                   }}
                 />
 
@@ -555,7 +598,7 @@ function Coupons() {
                   fullWidth
                   InputLabelProps={{ shrink: true }}
                   inputProps={{
-                    min: getMinExpiryDate()
+                    min: getMinExpiryDate(),
                   }}
                 />
               </Box>
@@ -571,7 +614,9 @@ function Coupons() {
                 fullWidth
               />
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box
+                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+              >
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -590,7 +635,10 @@ function Coupons() {
                       checked={form.first_time_user_only}
                       color="secondary"
                       onChange={(e) =>
-                        setForm({ ...form, first_time_user_only: e.target.checked })
+                        setForm({
+                          ...form,
+                          first_time_user_only: e.target.checked,
+                        })
                       }
                     />
                   }

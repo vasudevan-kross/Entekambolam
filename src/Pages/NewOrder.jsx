@@ -92,6 +92,7 @@ function NewOrder() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState("");
   const [couponValidating, setCouponValidating] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
 
   // days state
   const [M, setM] = useState();
@@ -278,7 +279,7 @@ function NewOrder() {
         clearCouponSelection();
       }
     } catch (error) {
-      console.error('Error fetching coupons:', error);
+      console.error("Error fetching coupons:", error);
       setCoupons([]);
       setFilteredCoupons([]);
       clearCouponSelection();
@@ -302,6 +303,7 @@ function NewOrder() {
     if (appliedCoupon) {
       validateCoupon(appliedCoupon);
     } else {
+      setDiscountAmount(0);
       setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
     }
   }, [appliedCoupon, originalOrderAmount]);
@@ -315,6 +317,7 @@ function NewOrder() {
     setsubsType("");
     settax(0);
     setSelectedProducts([]);
+    setDiscountAmount(0);
   };
 
   // const selectDays = () => {
@@ -535,6 +538,7 @@ function NewOrder() {
           delivery_charge: deliveryAmount,
           delivery_instruction: deliveryInstruction || "",
           coupon_id: appliedCoupon ? appliedCoupon.id : null,
+          coupon_discount_value: discountAmount || 0,
         };
 
         url = `${api}/add_order`;
@@ -609,6 +613,7 @@ function NewOrder() {
         delivery_charge: deliveryAmount,
         delivery_instruction: deliveryInstruction || "",
         coupon_id: appliedCoupon ? appliedCoupon.id : null,
+        coupon_discount_value: discountAmount || 0,
       };
 
       const url = `${api}/add_order`;
@@ -698,7 +703,9 @@ function NewOrder() {
       freeDeliveryMax > 0 && totalPrice > 0 && totalPrice > freeDeliveryMax
         ? 0
         : oneTimeDeliveryCharge;
-    const finalAmount = parseFloat(totalPrice + calculatedDeliveryAmount).toFixed(2);
+    const finalAmount = parseFloat(
+      totalPrice + calculatedDeliveryAmount
+    ).toFixed(2);
     setorderAmount(finalAmount);
     setOriginalOrderAmount(finalAmount);
     setDeliveryAmount(calculatedDeliveryAmount);
@@ -810,6 +817,24 @@ function NewOrder() {
     }
   };
 
+  const calculateDiscountAmount = (coupon, cartTotal) => {
+    if (!coupon || !cartTotal) return 0;
+
+    const orderValue = parseFloat(cartTotal);
+    let discount = 0;
+
+    if (coupon.type === 2) {
+      // Percentage-based coupon
+      discount = (coupon.value / 100) * orderValue;
+    } else {
+      // Fixed amount coupon
+      discount = parseFloat(coupon.value || 0);
+    }
+
+    // Ensure discount doesn't exceed order amount
+    return Math.min(discount, orderValue);
+  };
+
   const clearCouponSelection = () => {
     setSelectedCoupon(null);
     setCouponCode("");
@@ -817,6 +842,7 @@ function NewOrder() {
     setCouponError("");
     setFilteredCoupons(coupons);
     setCouponValidating(false);
+    setDiscountAmount(0);
     setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
   };
 
@@ -829,14 +855,15 @@ function NewOrder() {
     } else {
       setSelectedCoupon(null);
       setAppliedCoupon(null);
+      setDiscountAmount(0);
       setCouponError(error);
     }
   };
 
   const findCouponByCode = (code) => {
     const trimmedCode = code.trim().toLowerCase();
-    return coupons.find(coupon =>
-      coupon?.code?.trim().toLowerCase() === trimmedCode
+    return coupons.find(
+      (coupon) => coupon?.code?.trim().toLowerCase() === trimmedCode
     );
   };
 
@@ -847,7 +874,10 @@ function NewOrder() {
     const orderVal = parseFloat(originalOrderAmount);
 
     if (minVal && orderVal < minVal) {
-      setCouponError(`Minimum cart value for this coupon is ₹${coupon.min_cart_value}`);
+      setCouponError(
+        `Minimum cart value for this coupon is ₹${coupon.min_cart_value}`
+      );
+      setDiscountAmount(0);
       setorderAmount(orderVal.toFixed(2));
       return;
     }
@@ -857,19 +887,24 @@ function NewOrder() {
       const response = await ADD(token, `${api}/validate_coupon`, {
         code: coupon.code,
         user_id: userId,
-        cart_total: orderVal
+        cart_total: orderVal,
       });
 
       if (response?.response === 200) {
-        const discount = response.data?.discount || 0;
+        const discount =
+          response.data?.discount || calculateDiscountAmount(coupon, orderVal);
+        const finalAmount = Math.max(0, orderVal - discount);
         setCouponError("");
-        setorderAmount((orderVal - discount).toFixed(2));
+        setDiscountAmount(discount);
+        setorderAmount(finalAmount.toFixed(2));
       } else {
         setCouponError(response?.message || "Invalid coupon code");
+        setDiscountAmount(0);
         setorderAmount(orderVal.toFixed(2));
       }
     } catch (error) {
       setCouponError("Something went wrong. Please try again.");
+      setDiscountAmount(0);
       setorderAmount(orderVal.toFixed(2));
     } finally {
       setCouponValidating(false);
@@ -901,11 +936,11 @@ function NewOrder() {
 
     if (reason !== "input") return;
 
-    const input = newInputValue.toLowerCase();
-    setCouponCode(newInputValue);
+    const input = newInputValue.trim().toLowerCase();
+    setCouponCode(newInputValue.trim());
     setCouponState(null); // Reset selected/applied
 
-    const filtered = coupons.filter(coupon => {
+    const filtered = coupons.filter((coupon) => {
       const code = coupon?.code?.toLowerCase() || "";
       const desc = coupon?.description?.toLowerCase() || "";
       return code.includes(input) || desc.includes(input);
@@ -917,10 +952,11 @@ function NewOrder() {
 
   const handleCouponEnterPress = () => {
     if (!couponCode || !coupons?.length) return;
-    if (appliedCoupon && appliedCoupon.code === couponCode) return;
-    const coupon = findCouponByCode(couponCode);
+    const trimmedCode = couponCode.trim();
+    if (appliedCoupon && appliedCoupon.code === trimmedCode) return;
+    const coupon = findCouponByCode(trimmedCode);
     setFilteredCoupons(coupons);
-    
+
     if (!coupon) {
       setCouponState(null, "Invalid Coupon code");
       return;
@@ -1015,8 +1051,9 @@ function NewOrder() {
                 color: theme.palette.mode === "dark" ? "#ffffffe6" : "#0e0e23",
               }}
             >
-              {`Order Details - ${orderType === 0 ? "Subscription Order" : "Buy Once"
-                }`}
+              {`Order Details - ${
+                orderType === 0 ? "Subscription Order" : "Buy Once"
+              }`}
             </Typography>
             <Typography
               className="mb1"
@@ -1044,7 +1081,8 @@ function NewOrder() {
                     if (data?.id) getAddress(data?.id);
                   }}
                   getOptionLabel={(option) =>
-                    `${option?.name} (${option?.phone ? option?.phone : option?.email
+                    `${option?.name} (${
+                      option?.phone ? option?.phone : option?.email
                     })` || ""
                   }
                   renderInput={(params) => (
@@ -1207,8 +1245,8 @@ function NewOrder() {
                             );
                             const calculatedDeliveryAmount =
                               freeDeliveryMax > 0 &&
-                                totalPrice > 0 &&
-                                totalPrice > freeDeliveryMax
+                              totalPrice > 0 &&
+                              totalPrice > freeDeliveryMax
                                 ? 0
                                 : oneTimeDeliveryCharge;
                             setprice(parseFloat(totalPrice).toFixed(2));
@@ -1250,10 +1288,10 @@ function NewOrder() {
                         renderTags={(selected) =>
                           selected.length > 0
                             ? `${selected
-                              .map(
-                                (item) => `${item.title.substring(0, 20)}...`
-                              )
-                              .join(", ")}`
+                                .map(
+                                  (item) => `${item.title.substring(0, 20)}...`
+                                )
+                                .join(", ")}`
                             : ""
                         }
                       />
@@ -1976,39 +2014,72 @@ function NewOrder() {
                 Select Coupon Code
               </Typography>
               <Grid container spacing={2} alignItems="center">
-                <Grid item xs={6} >
+                <Grid item xs={6}>
                   <Autocomplete
                     id="coupon-autocomplete"
-                    options={Array.isArray(filteredCoupons) ? filteredCoupons : []}
-                    getOptionLabel={(option) =>
-                      typeof option === 'string' ? option : option?.code || ''
+                    options={
+                      Array.isArray(filteredCoupons) ? filteredCoupons : []
                     }
-                    value={typeof selectedCoupon === 'string' || !selectedCoupon ? null : selectedCoupon}
+                    getOptionLabel={(option) =>
+                      typeof option === "string" ? option : option?.code || ""
+                    }
+                    value={
+                      typeof selectedCoupon === "string" || !selectedCoupon
+                        ? null
+                        : selectedCoupon
+                    }
                     fullWidth
                     freeSolo
                     renderOption={(props, option) => {
-                      if (!option || typeof option !== 'object') return null;
+                      if (!option || typeof option !== "object") return null;
                       return (
                         <li {...props}>
                           <Box display="flex" flexDirection="column">
-                            <span style={{ fontWeight: 600, fontSize: 18 }}>{option.code}</span>
-                            <span style={{ fontSize: 16, color: '#888' }}>{option.description}</span>
-                            <span style={{ fontSize: 16, color: '#666' }}>
-                              {option.type === 1 ? `₹${option.value} off` : `${option.value}% off`} | Min Cart: ₹{option.min_cart_value}
+                            <span style={{ fontWeight: 600, fontSize: 18 }}>
+                              {option.code}
                             </span>
-                            <span style={{ fontSize: 15, color: option.is_active ? 'green' : 'red' }}>
-                              {option.is_active ? 'Active' : 'Inactive'} | Expires: {option.expires_at ? option.expires_at.split('T')[0] : 'N/A'}
+                            <span style={{ fontSize: 16, color: "#888" }}>
+                              {option.description}
+                            </span>
+                            <span style={{ fontSize: 16, color: "#666" }}>
+                              {option.type === 1
+                                ? `₹${option.value} off`
+                                : `${option.value}% off`}{" "}
+                              | Min Cart: ₹{option.min_cart_value}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 15,
+                                color: option.is_active ? "green" : "red",
+                              }}
+                            >
+                              {option.is_active ? "Active" : "Inactive"} |
+                              Expires:{" "}
+                              {option.expires_at
+                                ? option.expires_at.split("T")[0]
+                                : "N/A"}
                             </span>
                             <span
                               style={{
                                 fontSize: 14,
-                                color: Number(originalOrderAmount) >= Number(option.min_cart_value) ? '#4CAF50' : '#FF9800',
-                                fontStyle: 'italic'
+                                color:
+                                  Number(originalOrderAmount) >=
+                                  Number(option.min_cart_value)
+                                    ? "#4CAF50"
+                                    : "#FF9800",
+                                fontStyle: "italic",
                               }}
                             >
-                              {Number(originalOrderAmount) >= Number(option.min_cart_value)
+                              {Number(originalOrderAmount) >=
+                              Number(option.min_cart_value)
                                 ? `✓ Coupon can be applied!`
-                                : `Your cart value is ₹${Number(originalOrderAmount).toFixed(2)}. Add ₹${Math.max(0, Number(option.min_cart_value) - Number(originalOrderAmount)).toFixed(2)} more to unlock this coupon.`}
+                                : `Your cart value is ₹${Number(
+                                    originalOrderAmount
+                                  ).toFixed(2)}. Add ₹${Math.max(
+                                    0,
+                                    Number(option.min_cart_value) -
+                                      Number(originalOrderAmount)
+                                  ).toFixed(2)} more to unlock this coupon.`}
                             </span>
                           </Box>
                         </li>
@@ -2033,7 +2104,9 @@ function NewOrder() {
                           ...params.InputProps,
                           endAdornment: (
                             <>
-                              {couponValidating ? <CircularProgress size={20} /> : null}
+                              {couponValidating ? (
+                                <CircularProgress size={20} />
+                              ) : null}
                               {params.InputProps.endAdornment}
                             </>
                           ),
@@ -2052,14 +2125,25 @@ function NewOrder() {
                       {couponError}
                     </Typography>
                   ) : appliedCoupon ? (
-                    <Typography color="success.main" sx={{ fontSize: 14, ml: 1 }}>
+                    <Typography
+                      color="success.main"
+                      sx={{ fontSize: 14, ml: 1 }}
+                    >
                       {appliedCoupon.type === 2 ? (
                         <>
-                          Coupon "{appliedCoupon.code}" applied: {appliedCoupon.value}% off (₹
-                          {((appliedCoupon.value / 100) * originalOrderAmount).toFixed(2)})!
+                          Coupon "{appliedCoupon.code}" applied:{" "}
+                          {appliedCoupon.value}% off (₹
+                          {(
+                            (appliedCoupon.value / 100) *
+                            originalOrderAmount
+                          ).toFixed(2)}
+                          )!
                         </>
                       ) : (
-                        <>Coupon "{appliedCoupon.code}" applied: ₹{appliedCoupon.value} off!</>
+                        <>
+                          Coupon "{appliedCoupon.code}" applied: ₹
+                          {appliedCoupon.value} off!
+                        </>
                       )}
                     </Typography>
                   ) : null}
