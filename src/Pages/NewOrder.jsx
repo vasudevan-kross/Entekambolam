@@ -817,22 +817,33 @@ function NewOrder() {
     }
   };
 
+  function applyMaxDiscount(discount, coupon) {
+    if (coupon?.max_discount_amount && coupon.max_discount_amount > 0) {
+      return Math.min(discount, parseFloat(coupon.max_discount_amount));
+    }
+    return discount;
+  }
+
   const calculateDiscountAmount = (coupon, cartTotal) => {
     if (!coupon || !cartTotal) return 0;
 
     const orderValue = parseFloat(cartTotal);
+    if (isNaN(orderValue) || orderValue <= 0) return 0;
+
     let discount = 0;
 
     if (coupon.type === 2) {
       // Percentage-based coupon
-      discount = (coupon.value / 100) * orderValue;
+      const percentage = parseFloat(coupon.value || 0);
+      discount = (percentage / 100) * orderValue;
+      discount = applyMaxDiscount(discount, coupon);
+      setDiscountAmount(discount);
     } else {
-      // Fixed amount coupon
       discount = parseFloat(coupon.value || 0);
     }
 
-    // Ensure discount doesn't exceed order amount
-    return Math.min(discount, orderValue);
+    // Ensure discount doesn't exceed order amount and is not negative
+    return Math.min(Math.max(discount, 0), orderValue);
   };
 
   const clearCouponSelection = () => {
@@ -843,7 +854,9 @@ function NewOrder() {
     setFilteredCoupons(coupons);
     setCouponValidating(false);
     setDiscountAmount(0);
-    setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+    if (originalOrderAmount) {
+      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+    }
   };
 
   const setCouponState = (coupon, error = "") => {
@@ -868,10 +881,17 @@ function NewOrder() {
   };
 
   const validateCoupon = async (coupon) => {
-    if (!coupon || !userId) return;
+    if (!coupon || !userId || !originalOrderAmount) return;
 
     const minVal = parseFloat(coupon.min_cart_value || 0);
     const orderVal = parseFloat(originalOrderAmount);
+
+    if (isNaN(orderVal) || orderVal <= 0) {
+      setCouponError("Please add items to cart before applying coupon");
+      setDiscountAmount(0);
+      setorderAmount("0.00");
+      return;
+    }
 
     if (minVal && orderVal < minVal) {
       setCouponError(
@@ -891,8 +911,14 @@ function NewOrder() {
       });
 
       if (response?.response === 200) {
-        const discount =
-          response.data?.discount || calculateDiscountAmount(coupon, orderVal);
+        let discount =
+          response.data?.discount ?? calculateDiscountAmount(coupon, orderVal);
+
+        // Apply max discount rule
+        if (response.data?.discount) {
+          discount = applyMaxDiscount(discount, coupon);
+        }
+
         const finalAmount = Math.max(0, orderVal - discount);
         setCouponError("");
         setDiscountAmount(discount);
@@ -958,13 +984,10 @@ function NewOrder() {
     setFilteredCoupons(coupons);
 
     if (!coupon) {
-      setCouponState(null, "Invalid Coupon code");
+      setCouponState(null, "Invalid coupon code");
       return;
     }
-    setSelectedCoupon(coupon);
-    setCouponCode(coupon.code);
-    setAppliedCoupon(coupon);
-    setCouponError("");
+    setCouponState(coupon);
   };
 
   const handleCouponKeyDown = (event) => {
@@ -2011,109 +2034,129 @@ function NewOrder() {
                     theme.palette.mode === "dark" ? "#ffffffe6" : "#0e0e23",
                 }}
               >
-                Select Coupon Code
+                🎫 Select Coupon Code
               </Typography>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={6}>
-                  <Autocomplete
-                    id="coupon-autocomplete"
-                    options={
-                      Array.isArray(filteredCoupons) ? filteredCoupons : []
-                    }
-                    getOptionLabel={(option) =>
-                      typeof option === "string" ? option : option?.code || ""
-                    }
-                    value={
-                      typeof selectedCoupon === "string" || !selectedCoupon
-                        ? null
-                        : selectedCoupon
-                    }
-                    fullWidth
-                    freeSolo
-                    renderOption={(props, option) => {
-                      if (!option || typeof option !== "object") return null;
-                      return (
-                        <li {...props}>
-                          <Box display="flex" flexDirection="column">
-                            <span style={{ fontWeight: 600, fontSize: 18 }}>
-                              {option.code}
-                            </span>
-                            <span style={{ fontSize: 16, color: "#888" }}>
-                              {option.description}
-                            </span>
-                            <span style={{ fontSize: 16, color: "#666" }}>
-                              {option.type === 1
-                                ? `₹${option.value} off`
-                                : `${option.value}% off`}{" "}
-                              | Min Cart: ₹{option.min_cart_value}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 15,
-                                color: option.is_active ? "green" : "red",
+                  <Box>
+                    <Autocomplete
+                      id="coupon-autocomplete"
+                      options={
+                        Array.isArray(filteredCoupons) ? filteredCoupons : []
+                      }
+                      getOptionLabel={(option) =>
+                        typeof option === "string" ? option : option?.code || ""
+                      }
+                      value={
+                        typeof selectedCoupon === "string" || !selectedCoupon
+                          ? null
+                          : selectedCoupon
+                      }
+                      fullWidth
+                      freeSolo
+                      renderOption={(props, option) => {
+                        if (!option || typeof option !== "object") return null;
+                        return (
+                          <li {...props}>
+                            <Box
+                              sx={{
+                                width: "100%", // ensures content fits inside 400px
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "6px",
+                                p: 2,
+                                borderRadius: "8px",
+                                border: "1px solid #ddd",
+                                backgroundColor: "#f9f9ff",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                               }}
                             >
-                              {option.is_active ? "Active" : "Inactive"} |
-                              Expires:{" "}
-                              {option.expires_at
-                                ? option.expires_at.split("T")[0]
-                                : "N/A"}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 14,
-                                color:
-                                  Number(originalOrderAmount) >=
-                                  Number(option.min_cart_value)
-                                    ? "#4CAF50"
-                                    : "#FF9800",
-                                fontStyle: "italic",
-                              }}
-                            >
-                              {Number(originalOrderAmount) >=
-                              Number(option.min_cart_value)
-                                ? `✓ Coupon can be applied!`
-                                : `Your cart value is ₹${Number(
-                                    originalOrderAmount
-                                  ).toFixed(2)}. Add ₹${Math.max(
-                                    0,
-                                    Number(option.min_cart_value) -
-                                      Number(originalOrderAmount)
-                                  ).toFixed(2)} more to unlock this coupon.`}
-                            </span>
-                          </Box>
-                        </li>
-                      );
-                    }}
-                    onChange={handleCouponChange}
-                    onInputChange={(event, newInputValue, reason) => {
-                      handleCouponInputChange(newInputValue, reason);
-                    }}
-                    inputValue={couponCode}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Coupon Code"
-                        placeholder="Enter or select coupon code"
-                        size="small"
-                        fullWidth
-                        color="secondary"
-                        error={!!couponError}
-                        onKeyDown={handleCouponKeyDown}
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {couponValidating ? (
-                                <CircularProgress size={20} />
-                              ) : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
-                        }}
-                      />
-                    )}
-                  />
+                              <Box
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: 18,
+                                  color: "#1a237e",
+                                }}
+                              >
+                                #{option.code}
+                              </Box>
+                              <Box sx={{ fontSize: 15, color: "#5f6368" }}>
+                                {option.description}
+                              </Box>
+                              <Box sx={{ fontSize: 15, color: "#424242" }}>
+                                {option.type === 1
+                                  ? `₹${option.value} off`
+                                  : `${option.value}% off`}{" "}
+                                | Min Cart: ₹{option.min_cart_value}
+                              </Box>
+                              {option.max_discount_amount > 0 && (
+                                <Box sx={{ fontSize: 15, color: "#424242" }}>
+                                  🎯 Max Discount Up to: ₹
+                                  {option.max_discount_amount}
+                                </Box>
+                              )}
+                              <Box sx={{ fontSize: 14, color: "#0d47a1" }}>
+                                📅 Valid until:{" "}
+                                {option.expires_at
+                                  ? option.expires_at.split("T")[0]
+                                  : "N/A"}
+                              </Box>
+                              <Box
+                                sx={{
+                                  fontSize: 14,
+                                  fontStyle: "italic",
+                                  color:
+                                    Number(originalOrderAmount) >=
+                                    Number(option.min_cart_value)
+                                      ? "#2e7d32"
+                                      : "#e65100",
+                                }}
+                              >
+                                {Number(originalOrderAmount) >=
+                                Number(option.min_cart_value)
+                                  ? `✅ Coupon can be applied!`
+                                  : `⚠️ Your cart value is ₹${Number(
+                                      originalOrderAmount
+                                    ).toFixed(2)}. Add ₹${Math.max(
+                                      0,
+                                      Number(option.min_cart_value) -
+                                        Number(originalOrderAmount)
+                                    ).toFixed(2)} more to unlock this coupon.`}
+                              </Box>
+                            </Box>
+                          </li>
+                        );
+                      }}
+                      onChange={handleCouponChange}
+                      onInputChange={(event, newInputValue, reason) => {
+                        handleCouponInputChange(newInputValue, reason);
+                      }}
+                      inputValue={couponCode}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Coupon Code"
+                          placeholder="Enter or select coupon code"
+                          size="small"
+                          fullWidth
+                          color="secondary"
+                          error={!!couponError}
+                          onKeyDown={handleCouponKeyDown}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {couponValidating ? (
+                                  <CircularProgress size={20} />
+                                ) : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  </Box>
                 </Grid>
                 <Grid item xs={6}>
                   {couponValidating ? (
@@ -2131,18 +2174,14 @@ function NewOrder() {
                     >
                       {appliedCoupon.type === 2 ? (
                         <>
-                          Coupon "{appliedCoupon.code}" applied:{" "}
+                          💰 Coupon "{appliedCoupon.code}" applied:{" "}
                           {appliedCoupon.value}% off (₹
-                          {(
-                            (appliedCoupon.value / 100) *
-                            originalOrderAmount
-                          ).toFixed(2)}
-                          )!
+                          {discountAmount.toFixed(2)})!
                         </>
                       ) : (
                         <>
-                          Coupon "{appliedCoupon.code}" applied: ₹
-                          {appliedCoupon.value} off!
+                          💰 Coupon "{appliedCoupon.code}" applied: ₹
+                          {discountAmount} off!
                         </>
                       )}
                     </Typography>
