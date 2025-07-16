@@ -140,7 +140,7 @@ function Transaction() {
   const [TransectionId, setTransectionId] = useState();
   const [Amount, setAmount] = useState();
   const [trasectionType, settrasectionType] = useState(2);
-  const [discription, setdiscription] = useState();
+  const [description, setdescription] = useState();
   const [isUpdating, setisUpdating] = useState();
   const [searchValue, setSearchValue] = useState("");
   const [snakbarOpen, setsnakbarOpen] = useState(false);
@@ -203,8 +203,9 @@ function Transaction() {
         user_id: selectedUser.id,
         payment_id: TransectionId,
         amount: parseFloat(Amount),
-        description: discription,
+        description: description,
         type: parseInt(trasectionType),
+        source_type: 1,
       };
       const url = `${api}/add_txn`;
       const addTransection = await ADD(token, url, data);
@@ -297,21 +298,38 @@ function Transaction() {
         field: "type",
         headerName: "Type",
         width: 100,
-        renderCell: (params) => (
-          <p>
-            {params.row.type === 1
-              ? "Credit"
-              : params.row.type === 2
-              ? "Debit"
-              : params.row.type === 3
-              ? "Refund"
-              : params.row.type === 4
-              ? "Referral"
-              : ""}
-          </p>
-        ),
-      },
+        renderCell: (params) => {
+          const type = params.row.type;
 
+          const typeMap = {
+            1: { label: "Credit", color: "green" },
+            2: { label: "Debit", color: "red" },
+            3: { label: "Refund", color: "green" },
+            4: { label: "Referral", color: "blue" },
+          };
+
+          const { label, color } = typeMap[type] || {
+            label: "",
+            color: "black",
+          };
+
+          return <p style={{ color }}>{label}</p>;
+        },
+      },
+      // {
+      //   field: "source_type",
+      //   headerName: "Source Type",
+      //   width: 100,
+      //   renderCell: (params) =>
+      //     params.value === 1 ? "Wallet" : "Online" || "N/A",
+      // },
+      {
+        field: "previous_balance",
+        headerName: "Previous Balance",
+        width: 100,
+        renderCell: (params) =>
+          (params.value && parseFloat(params.value)?.toFixed(2)) || "N/A",
+      },
       {
         field: "updated_at",
         headerName: "Last Update",
@@ -351,6 +369,7 @@ function Transaction() {
       "Order Id",
       "Description",
       "Type",
+      "Previous Balance",
       "Last Update",
     ];
 
@@ -373,6 +392,8 @@ function Transaction() {
         : row.type === 4
         ? "Referral"
         : "N/A",
+      (row.previous_balance && parseFloat(row.previous_balance)?.toFixed(2)) ||
+        "0.00",
       moment(row.updated_at).format("DD-MM-YYYY HH:mm:ss"),
     ]);
 
@@ -426,6 +447,7 @@ function Transaction() {
         { header: "Order Id", dataKey: "order_number" },
         { header: "Description", dataKey: "description" },
         { header: "Type", dataKey: "type" },
+        { header: "Previous Balance", dataKey: "previous_balance" },
         { header: "Last Update", dataKey: "updated_at" },
       ];
 
@@ -449,6 +471,10 @@ function Transaction() {
             : row.type === 4
             ? "Referral"
             : "N/A",
+        previous_balance:
+          (row.previous_balance &&
+            parseFloat(row.previous_balance)?.toFixed(2)) ||
+          "0.00",
         updated_at: moment(row.updated_at).format("DD-MM-YYYY HH:mm:ss"),
       }));
 
@@ -911,7 +937,7 @@ function Transaction() {
                 size="small"
                 color="secondary"
                 onChange={(e) => {
-                  setdiscription(e.target.value);
+                  setdescription(e.target.value);
                 }}
               />
 

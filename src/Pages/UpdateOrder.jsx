@@ -1633,6 +1633,7 @@ function UpdateOrder() {
         type: 3,
         description: refundMessage,
         payment_mode: 1,
+        source_type: 1,
       };
       setIsRefundLoading(true);
       const url = `${api}/add_txn`;

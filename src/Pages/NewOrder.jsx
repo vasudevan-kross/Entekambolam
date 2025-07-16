@@ -49,6 +49,7 @@ function NewOrder() {
   const [tax, settax] = useState(0);
   const [orderAmount, setorderAmount] = useState(0);
   const [originalOrderAmount, setOriginalOrderAmount] = useState(0);
+  const [cartTotal, setCartTotal] = useState(0);
   const [date, setdate] = useState();
   const [addressID, setaddressID] = useState();
   const [quantity, setquantity] = useState(1);
@@ -279,7 +280,7 @@ function NewOrder() {
         clearCouponSelection();
       }
     } catch (error) {
-      console.error("Error fetching coupons:", error);
+      console.error('Error fetching coupons:', error);
       setCoupons([]);
       setFilteredCoupons([]);
       clearCouponSelection();
@@ -296,7 +297,7 @@ function NewOrder() {
   }, [userId]);
 
   useEffect(() => {
-    if (!originalOrderAmount) {
+    if (!cartTotal) {
       clearCouponSelection();
       return;
     }
@@ -306,13 +307,14 @@ function NewOrder() {
       setDiscountAmount(0);
       setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
     }
-  }, [appliedCoupon, originalOrderAmount]);
+  }, [cartTotal, appliedCoupon]);
 
   const resetOrderStates = () => {
     setprice(0);
     setMRP(0);
     setorderAmount(0);
     setOriginalOrderAmount(0);
+    setCartTotal(0);
     setquantity(0);
     setsubsType("");
     settax(0);
@@ -703,11 +705,10 @@ function NewOrder() {
       freeDeliveryMax > 0 && totalPrice > 0 && totalPrice > freeDeliveryMax
         ? 0
         : oneTimeDeliveryCharge;
-    const finalAmount = parseFloat(
-      totalPrice + calculatedDeliveryAmount
-    ).toFixed(2);
+    const finalAmount = parseFloat(totalPrice + calculatedDeliveryAmount).toFixed(2);
     setorderAmount(finalAmount);
     setOriginalOrderAmount(finalAmount);
+    setCartTotal(parseFloat(totalPrice).toFixed(2));
     setDeliveryAmount(calculatedDeliveryAmount);
     setquantity(parseInt(totalQuantity));
     setSelectedProducts(productList);
@@ -718,12 +719,12 @@ function NewOrder() {
     const orderDays = subsType === 3 ? 30 : subsType === 4 ? 15 : 1;
     const deliveryCharge = subDeliveryCharge;
     if ([1, 3, 4].includes(subsType)) {
-      const orderAmount =
-        ((taxPrice + price) * qty + deliveryCharge) * orderDays;
-      const finalAmount = parseFloat(orderAmount).toFixed(2);
+      const subtotal = (taxPrice + price) * qty * orderDays;
+      const deliveryAmt = deliveryCharge * orderDays;
+      const finalAmount = parseFloat(subtotal + deliveryAmt).toFixed(2);
       setorderAmount(finalAmount);
       setOriginalOrderAmount(finalAmount);
-      const deliveryAmt = deliveryCharge * orderDays;
+      setCartTotal(parseFloat(subtotal).toFixed(2));
       setDeliveryAmount(deliveryAmt);
     }
   };
@@ -735,16 +736,17 @@ function NewOrder() {
     const orderDays = subsType === 3 ? 30 : subsType === 4 ? 15 : 1;
     const deliveryCharge = subDeliveryCharge;
     if ([1, 3, 4].includes(subsType)) {
-      const orderAmount =
-        ((taxPrice + price) * quantity + deliveryCharge) * orderDays;
+      const subtotal = (taxPrice + price) * quantity * orderDays;
       const deliveryAmt = deliveryCharge * orderDays;
+      const finalAmount = parseFloat(subtotal + deliveryAmt).toFixed(2);
       setDeliveryAmount(deliveryAmt);
-      const finalAmount = parseFloat(orderAmount).toFixed(2);
       setorderAmount(finalAmount);
       setOriginalOrderAmount(finalAmount);
+      setCartTotal(parseFloat(subtotal).toFixed(2));
     } else {
       setorderAmount(0);
       setOriginalOrderAmount(0);
+      setCartTotal(0);
       setquantity(0);
       setDeliveryAmount(0);
       setCalcAmt(false);
@@ -797,12 +799,14 @@ function NewOrder() {
       //   (dayQty["qty"] ?? 0) * price >= freeDeliveryMax ? 0 : subDeliveryCharge;
     }
     subDeliveryAmount = subDeliveryCharge * weeklytotalDays;
-    totalAmt = (taxPrice + price) * totalQty + subDeliveryAmount;
+    const subtotal = (taxPrice + price) * totalQty;
+    totalAmt = subtotal + subDeliveryAmount;
     setDeliveryAmount(subDeliveryAmount);
     setquantity(totalQty);
     const finalAmount = parseFloat(totalAmt).toFixed(2);
     setorderAmount(finalAmount);
     setOriginalOrderAmount(finalAmount);
+    setCartTotal(parseFloat(subtotal).toFixed(2));
     setCalcAmt(true);
   };
 
@@ -817,33 +821,36 @@ function NewOrder() {
     }
   };
 
-  function applyMaxDiscount(discount, coupon) {
-    if (coupon?.max_discount_amount && coupon.max_discount_amount > 0) {
-      return Math.min(discount, parseFloat(coupon.max_discount_amount));
+
+  function applyMaxDiscount(discount, coupon, orderValue) {
+    // Cap discount at coupon's max_discount_amount if set
+    if (coupon?.type === 2 && coupon?.max_discount_amount && coupon.max_discount_amount > 0) {
+      discount = Math.min(discount, parseFloat(coupon.max_discount_amount));
     }
-    return discount;
+    // Cap discount at cartTotal
+    return Math.min(discount, Number(orderValue));
   }
 
-  const calculateDiscountAmount = (coupon, cartTotal) => {
-    if (!coupon || !cartTotal) return 0;
-
-    const orderValue = parseFloat(cartTotal);
+  const calculateDiscountAmount = (coupon, orderValue) => {
+    if (!coupon || !orderValue) return 0;
     if (isNaN(orderValue) || orderValue <= 0) return 0;
 
     let discount = 0;
 
     if (coupon.type === 2) {
-      // Percentage-based coupon
+      // Percentage discount
       const percentage = parseFloat(coupon.value || 0);
       discount = (percentage / 100) * orderValue;
-      discount = applyMaxDiscount(discount, coupon);
-      setDiscountAmount(discount);
     } else {
+      // Flat discount
       discount = parseFloat(coupon.value || 0);
     }
 
-    // Ensure discount doesn't exceed order amount and is not negative
-    return Math.min(Math.max(discount, 0), orderValue);
+    discount = applyMaxDiscount(discount, coupon , orderValue);
+
+    // Ensure discount does not exceed order value and is not negative
+    discount = Math.min(discount, orderValue);
+    return Math.max(discount, 0);
   };
 
   const clearCouponSelection = () => {
@@ -875,16 +882,16 @@ function NewOrder() {
 
   const findCouponByCode = (code) => {
     const trimmedCode = code.trim().toLowerCase();
-    return coupons.find(
-      (coupon) => coupon?.code?.trim().toLowerCase() === trimmedCode
+    return coupons.find(coupon =>
+      coupon?.code?.trim().toLowerCase() === trimmedCode
     );
   };
 
   const validateCoupon = async (coupon) => {
-    if (!coupon || !userId || !originalOrderAmount) return;
+    if (!coupon || !userId || !cartTotal || !originalOrderAmount) return;
 
     const minVal = parseFloat(coupon.min_cart_value || 0);
-    const orderVal = parseFloat(originalOrderAmount);
+    const orderVal = parseFloat(cartTotal);
 
     if (isNaN(orderVal) || orderVal <= 0) {
       setCouponError("Please add items to cart before applying coupon");
@@ -894,11 +901,9 @@ function NewOrder() {
     }
 
     if (minVal && orderVal < minVal) {
-      setCouponError(
-        `Minimum cart value for this coupon is ₹${coupon.min_cart_value}`
-      );
+      setCouponError(`Minimum cart value for this coupon is ₹${coupon.min_cart_value}`);
       setDiscountAmount(0);
-      setorderAmount(orderVal.toFixed(2));
+      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
       return;
     }
 
@@ -907,31 +912,42 @@ function NewOrder() {
       const response = await ADD(token, `${api}/validate_coupon`, {
         code: coupon.code,
         user_id: userId,
-        cart_total: orderVal,
+        cart_total: orderVal
       });
 
       if (response?.response === 200) {
-        let discount =
-          response.data?.discount ?? calculateDiscountAmount(coupon, orderVal);
+        let discount = response.data?.discount ?? calculateDiscountAmount(coupon, orderVal);
 
         // Apply max discount rule
         if (response.data?.discount) {
-          discount = applyMaxDiscount(discount, coupon);
+          discount = applyMaxDiscount(discount, coupon, orderVal);
         }
-
-        const finalAmount = Math.max(0, orderVal - discount);
         setCouponError("");
         setDiscountAmount(discount);
-        setorderAmount(finalAmount.toFixed(2));
+        if (orderType === 0) {
+          const finalAmount = Math.max(0, originalOrderAmount - discount);
+          setorderAmount(finalAmount.toFixed(2));
+        } else {
+          // Calculate net subtotal after discount
+          const netSubtotal = Number(cartTotal) - Number(discount);
+          let deliveryCharge = 0;
+          if (freeDeliveryMax > 0 && netSubtotal < freeDeliveryMax) {
+            deliveryCharge = Number(oneTimeDeliveryCharge);
+          }
+          const finalAmount = Math.max(0, netSubtotal + deliveryCharge);
+          setorderAmount(finalAmount.toFixed(2));
+          setOriginalOrderAmount((netSubtotal + deliveryCharge).toFixed(2));
+          setDeliveryAmount(deliveryCharge);
+        }
       } else {
         setCouponError(response?.message || "Invalid coupon code");
         setDiscountAmount(0);
-        setorderAmount(orderVal.toFixed(2));
+        setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
       }
     } catch (error) {
       setCouponError("Something went wrong. Please try again.");
       setDiscountAmount(0);
-      setorderAmount(orderVal.toFixed(2));
+      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
     } finally {
       setCouponValidating(false);
     }
@@ -966,7 +982,7 @@ function NewOrder() {
     setCouponCode(newInputValue.trim());
     setCouponState(null); // Reset selected/applied
 
-    const filtered = coupons.filter((coupon) => {
+    const filtered = coupons.filter(coupon => {
       const code = coupon?.code?.toLowerCase() || "";
       const desc = coupon?.description?.toLowerCase() || "";
       return code.includes(input) || desc.includes(input);
@@ -1074,9 +1090,8 @@ function NewOrder() {
                 color: theme.palette.mode === "dark" ? "#ffffffe6" : "#0e0e23",
               }}
             >
-              {`Order Details - ${
-                orderType === 0 ? "Subscription Order" : "Buy Once"
-              }`}
+              {`Order Details - ${orderType === 0 ? "Subscription Order" : "Buy Once"
+                }`}
             </Typography>
             <Typography
               className="mb1"
@@ -1104,8 +1119,7 @@ function NewOrder() {
                     if (data?.id) getAddress(data?.id);
                   }}
                   getOptionLabel={(option) =>
-                    `${option?.name} (${
-                      option?.phone ? option?.phone : option?.email
+                    `${option?.name} (${option?.phone ? option?.phone : option?.email
                     })` || ""
                   }
                   renderInput={(params) => (
@@ -1177,6 +1191,7 @@ function NewOrder() {
                         settax(0);
                         setorderAmount(0);
                         setOriginalOrderAmount(0);
+                        setCartTotal(0);
                         return;
                       }
                       setproductId(data.id);
@@ -1191,6 +1206,7 @@ function NewOrder() {
                       ).toFixed(2);
                       setorderAmount(amount);
                       setOriginalOrderAmount(amount);
+                      setCartTotal(amount);
                     }}
                     getOptionLabel={(option) =>
                       `${option?.title} (${option?.qty_text})` || ""
@@ -1268,8 +1284,8 @@ function NewOrder() {
                             );
                             const calculatedDeliveryAmount =
                               freeDeliveryMax > 0 &&
-                              totalPrice > 0 &&
-                              totalPrice > freeDeliveryMax
+                                totalPrice > 0 &&
+                                totalPrice > freeDeliveryMax
                                 ? 0
                                 : oneTimeDeliveryCharge;
                             setprice(parseFloat(totalPrice).toFixed(2));
@@ -1279,6 +1295,7 @@ function NewOrder() {
                             ).toFixed(2);
                             setorderAmount(amount);
                             setOriginalOrderAmount(amount);
+                            setCartTotal(parseFloat(totalPrice).toFixed(2));
                             setDeliveryAmount(calculatedDeliveryAmount);
                             setquantity(parseInt(totalQuantity));
                             return updatedSelection;
@@ -1311,10 +1328,10 @@ function NewOrder() {
                         renderTags={(selected) =>
                           selected.length > 0
                             ? `${selected
-                                .map(
-                                  (item) => `${item.title.substring(0, 20)}...`
-                                )
-                                .join(", ")}`
+                              .map(
+                                (item) => `${item.title.substring(0, 20)}...`
+                              )
+                              .join(", ")}`
                             : ""
                         }
                       />
@@ -1416,6 +1433,21 @@ function NewOrder() {
                   />
                 </Grid>
               )}
+              <Grid item xs={4}>
+                <TextField
+                  disabled
+                  fullWidth
+                  id="Cart Subtotal"
+                  label="Cart Total"
+                  name="Cart Subtotal"
+                  InputLabelProps={{ shrink: true }}
+                  InputProps={{ inputProps: { min: 0 } }}
+                  type="number"
+                  color="secondary"
+                  size="small"
+                  value={cartTotal}
+                />
+              </Grid>
               <Grid item xs={4}>
                 <TextField
                   required
@@ -1662,7 +1694,7 @@ function NewOrder() {
               </Grid>
               <Grid item xs={4}>
                 <TextField
-                  margin="normal"
+                  //margin="normal"
                   fullWidth
                   id="Delivery Instruction"
                   label="Delivery Instruction"
@@ -1686,6 +1718,7 @@ function NewOrder() {
                             setM(M ? null : 1);
                             setorderAmount(0);
                             setOriginalOrderAmount(0);
+                            setCartTotal(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1699,6 +1732,7 @@ function NewOrder() {
                             setT(T ? null : 2);
                             setorderAmount(0);
                             setOriginalOrderAmount(0);
+                            setCartTotal(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1712,6 +1746,7 @@ function NewOrder() {
                             setW(W ? null : 3);
                             setorderAmount(0);
                             setOriginalOrderAmount(0);
+                            setCartTotal(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1725,6 +1760,7 @@ function NewOrder() {
                             setTH(TH ? null : 4);
                             setorderAmount(0);
                             setOriginalOrderAmount(0);
+                            setCartTotal(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1738,6 +1774,7 @@ function NewOrder() {
                             setF(F ? null : 5);
                             setorderAmount(0);
                             setOriginalOrderAmount(0);
+                            setCartTotal(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1751,6 +1788,7 @@ function NewOrder() {
                             setS(S ? null : 6);
                             setorderAmount(0);
                             setOriginalOrderAmount(0);
+                            setCartTotal(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1764,6 +1802,7 @@ function NewOrder() {
                             setSU(SU === 1 ? 0 : 1);
                             setorderAmount(0);
                             setOriginalOrderAmount(0);
+                            setCartTotal(0);
                             setquantity(0);
                             setDeliveryAmount(0);
                             setCalcAmt(false);
@@ -1793,6 +1832,7 @@ function NewOrder() {
                                       s.remove();
                                       setorderAmount(0);
                                       setOriginalOrderAmount(0);
+                                      setCartTotal(0);
                                       setquantity(0);
                                       setDeliveryAmount(0);
                                       setCalcAmt(false);
@@ -1822,6 +1862,7 @@ function NewOrder() {
                                         s.add();
                                         setorderAmount(0);
                                         setOriginalOrderAmount(0);
+                                        setCartTotal(0);
                                         setquantity(0);
                                         setDeliveryAmount(0);
                                         setCalcAmt(false);
@@ -2014,7 +2055,7 @@ function NewOrder() {
         )}
 
         {/* Coupon Code Section */}
-        {coupons && coupons.length > 0 && userId && originalOrderAmount > 0 && (
+        {coupons && coupons.length > 0 && userId && cartTotal > 0 && (
           <div className="product">
             <div
               className="left"
@@ -2037,91 +2078,93 @@ function NewOrder() {
                 🎫 Select Coupon Code
               </Typography>
               <Grid container spacing={2} alignItems="center">
-                <Grid item xs={6}>
+                <Grid item xs={6} >
                   <Box>
                     <Autocomplete
                       id="coupon-autocomplete"
-                      options={
-                        Array.isArray(filteredCoupons) ? filteredCoupons : []
-                      }
+                      options={Array.isArray(filteredCoupons) ? filteredCoupons : []}
                       getOptionLabel={(option) =>
-                        typeof option === "string" ? option : option?.code || ""
+                        typeof option === 'string' ? option : option?.code || ''
                       }
                       value={
-                        typeof selectedCoupon === "string" || !selectedCoupon
+                        typeof selectedCoupon === 'string' || !selectedCoupon
                           ? null
                           : selectedCoupon
                       }
                       fullWidth
                       freeSolo
                       renderOption={(props, option) => {
-                        if (!option || typeof option !== "object") return null;
+                        if (!option || typeof option !== 'object') return null;
                         return (
                           <li {...props}>
                             <Box
                               sx={{
-                                width: "100%", // ensures content fits inside 400px
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "6px",
+                                width: '100%', // ensures content fits inside 400px
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px',
                                 p: 2,
-                                borderRadius: "8px",
-                                border: "1px solid #ddd",
-                                backgroundColor: "#f9f9ff",
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                                borderRadius: '8px',
+                                border: '1px solid #ddd',
+                                backgroundColor: '#f9f9ff',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                               }}
                             >
-                              <Box
-                                sx={{
-                                  fontWeight: 700,
-                                  fontSize: 18,
-                                  color: "#1a237e",
-                                }}
-                              >
-                                #{option.code}
+                              <Box sx={{ fontWeight: 700, fontSize: 18, color: '#28318dff' }}>
+                                {option.type === 1
+                                  ? `FLAT ₹${parseFloat(option.value).toString()} OFF`
+                                  : `${parseFloat(option.value).toString()}% OFF`}
                               </Box>
-                              <Box sx={{ fontSize: 15, color: "#5f6368" }}>
+                              <Box sx={{ fontSize: 15, color: '#5f6368' }}>
                                 {option.description}
                               </Box>
-                              <Box sx={{ fontSize: 15, color: "#424242" }}>
-                                {option.type === 1
-                                  ? `₹${option.value} off`
-                                  : `${option.value}% off`}{" "}
-                                | Min Cart: ₹{option.min_cart_value}
+                              <Box sx={{ fontSize: 15, color: '#424242' }}>
+                                Min Cart: ₹{option.min_cart_value}
                               </Box>
-                              {option.max_discount_amount > 0 && (
-                                <Box sx={{ fontSize: 15, color: "#424242" }}>
-                                  🎯 Max Discount Up to: ₹
-                                  {option.max_discount_amount}
+                              {option.type === 2 && option.max_discount_amount && option.max_discount_amount > 0 && (
+                                <Box sx={{ fontSize: 15, color: '#424242' }}>
+                                  🎯 Max Discount Up to: ₹{option.max_discount_amount}
                                 </Box>
                               )}
-                              <Box sx={{ fontSize: 14, color: "#0d47a1" }}>
-                                📅 Valid until:{" "}
-                                {option.expires_at
-                                  ? option.expires_at.split("T")[0]
-                                  : "N/A"}
+                              <Box sx={{ fontSize: 14, color: '#0d47a1' }}>
+                                📅 Valid until: {option.expires_at ? option.expires_at.split('T')[0] : 'N/A'}
                               </Box>
                               <Box
                                 sx={{
                                   fontSize: 14,
-                                  fontStyle: "italic",
+                                  fontStyle: 'italic',
                                   color:
-                                    Number(originalOrderAmount) >=
-                                    Number(option.min_cart_value)
-                                      ? "#2e7d32"
-                                      : "#e65100",
+                                    Number(cartTotal) >= Number(option.min_cart_value)
+                                      ? '#2e7d32'
+                                      : '#e65100',
                                 }}
                               >
-                                {Number(originalOrderAmount) >=
-                                Number(option.min_cart_value)
+                                {Number(cartTotal) >= Number(option.min_cart_value)
                                   ? `✅ Coupon can be applied!`
-                                  : `⚠️ Your cart value is ₹${Number(
-                                      originalOrderAmount
-                                    ).toFixed(2)}. Add ₹${Math.max(
-                                      0,
-                                      Number(option.min_cart_value) -
-                                        Number(originalOrderAmount)
-                                    ).toFixed(2)} more to unlock this coupon.`}
+                                  : `⚠️ Your cart value is ₹${Number(cartTotal).toFixed(
+                                    2
+                                  )}. Add ₹${Math.max(
+                                    0,
+                                    Number(option.min_cart_value) - Number(cartTotal)
+                                  ).toFixed(2)} more to unlock this coupon.`}
+                              </Box>
+                              <Box
+                                sx={{
+                                  fontFamily: '"Fira Mono", "Courier New", monospace',
+                                  fontSize: 14,
+                                  backgroundColor: '#f1f1f1',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  display: 'inline-block',
+                                  fontWeight: 600,
+                                  px: 1,
+                                  color: '#333',
+                                  width: 'fit-content',
+                                  maxWidth: '100%',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {option.code}
                               </Box>
                             </Box>
                           </li>
@@ -2146,9 +2189,7 @@ function NewOrder() {
                             ...params.InputProps,
                             endAdornment: (
                               <>
-                                {couponValidating ? (
-                                  <CircularProgress size={20} />
-                                ) : null}
+                                {couponValidating ? <CircularProgress size={20} /> : null}
                                 {params.InputProps.endAdornment}
                               </>
                             ),
@@ -2168,21 +2209,14 @@ function NewOrder() {
                       {couponError}
                     </Typography>
                   ) : appliedCoupon ? (
-                    <Typography
-                      color="success.main"
-                      sx={{ fontSize: 14, ml: 1 }}
-                    >
+                    <Typography color="success.main" sx={{ fontSize: 14, ml: 1 }}>
                       {appliedCoupon.type === 2 ? (
                         <>
-                          💰 Coupon "{appliedCoupon.code}" applied:{" "}
-                          {appliedCoupon.value}% off (₹
-                          {discountAmount.toFixed(2)})!
+                          💰 Coupon "{appliedCoupon.code}" applied: {appliedCoupon.value}% off (₹
+                          {(discountAmount).toFixed(2)})!
                         </>
                       ) : (
-                        <>
-                          💰 Coupon "{appliedCoupon.code}" applied: ₹
-                          {discountAmount} off!
-                        </>
+                        <>💰 Coupon "{appliedCoupon.code}" applied: ₹{discountAmount} off!</>
                       )}
                     </Typography>
                   ) : null}
