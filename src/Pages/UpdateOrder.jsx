@@ -2352,9 +2352,9 @@ function UpdateOrder() {
                   disabled
                   required
                   fullWidth
-                  id="discountAmount"
-                  label="Discount Amount"
-                  name="Discount Amount"
+                  id="coupondiscountAmount"
+                  label="Coupon Discount Amount"
+                  name="Coupon Discount Amount"
                   type="number"
                   color="secondary"
                   autoComplete="number"

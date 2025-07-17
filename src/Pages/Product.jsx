@@ -752,7 +752,7 @@ function Product() {
                     options={subcateggory}
                     getOptionLabel={(option) => option?.title || ""}
                     value={
-                      subcateggory.find((item) => item.id === subCat) || null
+                      (Array.isArray(subcateggory) ? subcateggory : []).find((item) => item.id === subCat) || null
                     }
                     inputValue={subcatName}
                     onChange={(e, data) => {
@@ -1181,7 +1181,7 @@ function Product() {
               </Grid>
             </div>
           </div>
-          <div className="delete">
+          {/* <div className="delete">
             <Button
               fullWidth
               variant="contained"
@@ -1195,7 +1195,7 @@ function Product() {
             >
               Delete
             </Button>
-          </div>
+          </div> */}
         </Box>
       ) : (
         <Stack spacing={1}>
