@@ -97,7 +97,10 @@ function Coupons() {
       { key: "start_at", message: "Start date is required." },
       { key: "expires_at", message: "Expiry date is required." },
       { key: "min_cart_value", message: "Minimum Cart Value is required." },
-      { key: "max_uses_per_user", message: "Max usage limit per user is required." }
+      {
+        key: "max_uses_per_user",
+        message: "Max usage limit per user is required.",
+      },
     ];
 
     const code = form.code;
@@ -112,7 +115,12 @@ function Coupons() {
     }
     for (const field of requiredFields) {
       const val = form[field.key];
-      if (val === undefined || val === null || val === "" || (field.key === "type" && val === 0)) {
+      if (
+        val === undefined ||
+        val === null ||
+        val === "" ||
+        (field.key === "type" && val === 0)
+      ) {
         handleSnackbar("error", field.message);
         return;
       }
@@ -126,14 +134,19 @@ function Coupons() {
       return;
     }
 
-
     if (form.type === 2 && value > 100) {
-      handleSnackbar("error", "Percentage value must be less than or equal to 100.");
+      handleSnackbar(
+        "error",
+        "Percentage value must be less than or equal to 100."
+      );
       return;
     }
 
     if (form.type === 1 && value >= minCartValue) {
-      handleSnackbar("error", "Amount value must be less than Minimum Cart Value.");
+      handleSnackbar(
+        "error",
+        "Amount value must be less than Minimum Cart Value."
+      );
       return;
     }
 
@@ -154,9 +167,12 @@ function Coupons() {
     if (
       !editingId &&
       form.code &&
-      coupons.some(c => c.code.toLowerCase() === form.code.toLowerCase())
+      coupons.some((c) => c.code.toLowerCase() === form.code.toLowerCase())
     ) {
-      handleSnackbar("error", "Coupon code already exists. Please choose a different code.");
+      handleSnackbar(
+        "error",
+        "Coupon code already exists. Please choose a different code."
+      );
       return;
     }
 
@@ -193,8 +209,14 @@ function Coupons() {
         fetchCoupons();
       } else {
         // Backend duplicate code error handling
-        if (res.message && res.message.toLowerCase().includes("already exists")) {
-          handleSnackbar("error", "Coupon code already exists. Please choose a different code.");
+        if (
+          res.message &&
+          res.message.toLowerCase().includes("already exists")
+        ) {
+          handleSnackbar(
+            "error",
+            "Coupon code already exists. Please choose a different code."
+          );
         } else {
           handleSnackbar("error", res.message || "Operation failed");
         }
@@ -601,6 +623,7 @@ function Coupons() {
                   label="Max usage limit per user"
                   type="number"
                   required
+                  disabled={form.first_time_user_only}
                   value={form.max_uses_per_user}
                   onChange={(e) =>
                     setForm({ ...form, max_uses_per_user: e.target.value })
@@ -691,6 +714,9 @@ function Coupons() {
                         setForm({
                           ...form,
                           first_time_user_only: e.target.checked,
+                          max_uses_per_user: e.target.checked
+                            ? 1
+                            : form.max_uses_per_user,
                         })
                       }
                     />
