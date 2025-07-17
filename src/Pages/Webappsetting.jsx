@@ -621,8 +621,19 @@ function Webappsetting() {
                 maxRows={8}
                 value={value}
                 size="small"
-                onChange={(e) => setvalue(e.target.value)}
+                onChange={(e) => {
+                  if ([16, 17, 18, 19].includes(Id)) {
+                    const numericValue = e.target.value.replace(/[^0-9.]/g, "");
+                    setvalue(numericValue);
+                  } else {
+                    setvalue(e.target.value);
+                  }
+                }}
                 color="secondary"
+                type={[16, 17, 18, 19].includes(Id) ? "number" : undefined}
+                inputProps={[16, 17, 18, 19].includes(Id) ? { inputMode: "decimal", pattern: "[0-9.]*" } : {}}
+                error={[16, 17, 18, 19].includes(Id) && value && isNaN(Number(value))}
+                helperText={[16, 17, 18, 19].includes(Id) && value && isNaN(Number(value)) ? "Please enter a valid number" : undefined}
               />
             )}
 

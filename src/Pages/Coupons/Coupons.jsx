@@ -90,20 +90,50 @@ function Coupons() {
     fetchCoupons();
   }, []);
   const handleSubmit = async () => {
-    // Basic client-side validation
-    if (
-      !form.code ||
-      !form.type ||
-      !form.value ||
-      !form.start_at ||
-      !form.expires_at
-    ) {
-      handleSnackbar("error", "Please fill all required fields.");
+    const requiredFields = [
+      { key: "code", message: "Coupon code is required." },
+      { key: "type", message: "Coupon type is required.", strict: true },
+      { key: "value", message: "Value is required." },
+      { key: "start_at", message: "Start date is required." },
+      { key: "expires_at", message: "Expiry date is required." },
+      { key: "min_cart_value", message: "Minimum Cart Value is required." },
+      { key: "max_uses_per_user", message: "Max usage limit per user is required." }
+    ];
+
+    const code = form.code;
+    if (code === undefined || code === null || code === "") {
+      handleSnackbar("error", "Coupon code is required.");
       return;
     }
 
-    if (Number(form.value) <= 0) {
+    if (form.type !== 1 && form.type !== 2) {
+      handleSnackbar("error", "Coupon type is required.");
+      return;
+    }
+    for (const field of requiredFields) {
+      const val = form[field.key];
+      if (val === undefined || val === null || val === "" || (field.key === "type" && val === 0)) {
+        handleSnackbar("error", field.message);
+        return;
+      }
+    }
+
+    const value = Number(form.value);
+    const minCartValue = Number(form.min_cart_value);
+
+    if (isNaN(value) || value <= 0) {
       handleSnackbar("error", "Value must be a positive number.");
+      return;
+    }
+
+
+    if (form.type === 2 && value > 100) {
+      handleSnackbar("error", "Percentage value must be less than or equal to 100.");
+      return;
+    }
+
+    if (form.type === 1 && value >= minCartValue) {
+      handleSnackbar("error", "Amount value must be less than Minimum Cart Value.");
       return;
     }
 
@@ -112,6 +142,21 @@ function Coupons() {
 
     if (start >= end) {
       handleSnackbar("error", "Expiry date must be after start date.");
+      return;
+    }
+
+    if (form.description && form.description.length > 255) {
+      handleSnackbar("error", "Description cannot exceed 255 characters.");
+      return;
+    }
+
+    // Duplicate coupon code check (client-side)
+    if (
+      !editingId &&
+      form.code &&
+      coupons.some(c => c.code.toLowerCase() === form.code.toLowerCase())
+    ) {
+      handleSnackbar("error", "Coupon code already exists. Please choose a different code.");
       return;
     }
 
@@ -147,7 +192,12 @@ function Coupons() {
         setOpen(false);
         fetchCoupons();
       } else {
-        handleSnackbar("error", res.message || "Operation failed");
+        // Backend duplicate code error handling
+        if (res.message && res.message.toLowerCase().includes("already exists")) {
+          handleSnackbar("error", "Coupon code already exists. Please choose a different code.");
+        } else {
+          handleSnackbar("error", res.message || "Operation failed");
+        }
       }
     } catch (error) {
       console.error("Coupon submission failed:", error);
@@ -608,10 +658,13 @@ function Coupons() {
                 multiline
                 rows={3}
                 value={form.description || ""}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
+                onChange={(e) => {
+                  if (e.target.value.length <= 255) {
+                    setForm({ ...form, description: e.target.value });
+                  }
+                }}
                 fullWidth
+                inputProps={{ maxLength: 255 }}
               />
 
               <Box

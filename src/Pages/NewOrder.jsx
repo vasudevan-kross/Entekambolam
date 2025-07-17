@@ -861,8 +861,18 @@ function NewOrder() {
     setFilteredCoupons(coupons);
     setCouponValidating(false);
     setDiscountAmount(0);
-    if (originalOrderAmount) {
-      setorderAmount(parseFloat(originalOrderAmount).toFixed(2));
+    setorderAmount(prev => {
+      return parseFloat(originalOrderAmount).toFixed(2);
+    });
+    if (orderType === 1) {
+      // Buy Once logic
+      setDeliveryAmount(() => {
+        let deliveryCharge = 0;
+        if (freeDeliveryMax > 0 && Number(cartTotal) > 0 && Number(cartTotal) < freeDeliveryMax) {
+          deliveryCharge = Number(oneTimeDeliveryCharge);
+        }
+        return deliveryCharge;
+      });
     }
   };
 
@@ -936,7 +946,7 @@ function NewOrder() {
           }
           const finalAmount = Math.max(0, netSubtotal + deliveryCharge);
           setorderAmount(finalAmount.toFixed(2));
-          setOriginalOrderAmount((netSubtotal + deliveryCharge).toFixed(2));
+          //setOriginalOrderAmount((Number(cartTotal) + deliveryCharge).toFixed(2));
           setDeliveryAmount(deliveryCharge);
         }
       } else {
