@@ -450,10 +450,13 @@ function Coupons() {
           <LoadingSkeleton rows={6} height={30} />
         ) : (
           <Box
+            className={`text-card-foreground shadow-sm rounded-lg height-calc p-4 xl:p-2 ${
+              theme.palette.mode === "dark" ? "bg-darkcard" : "bg-card"
+            }`}
             sx={{
-              height: 500,
               width: "100%",
-              mt: 2,
+              height: "100%",
+              paddingBottom: "30px",
               "& .MuiDataGrid-root": {
                 border: "none",
               },
@@ -463,17 +466,33 @@ function Coupons() {
               "& .MuiDataGrid-row": {
                 fontSize: "14px",
               },
+              "& .name-column--cell": {
+                color: colors.greenAccent[300],
+              },
               "& .MuiDataGrid-columnHeaders": {
                 backgroundColor:
                   theme.palette.mode === "dark" ? "#334155" : "#0e0e23",
-                color: "#f5f5f5",
                 borderBottom: "none",
+                color: "#f5f5f5",
+              },
+              "& .MuiDataGrid-virtualScroller": {
+                backgroundColor: colors.primary[0],
+                borderBottom: "#000",
               },
               "& .MuiDataGrid-footerContainer": {
+                borderTop: "none",
                 backgroundColor:
                   theme.palette.mode === "dark" ? "#334155" : "#0e0e23",
-                borderTop: "none",
                 color: "#f5f5f5",
+              },
+              "& .MuiTablePagination-root": {
+                color: "#f5f5f5 !important",
+              },
+              "& .MuiTablePagination-selectIcon": {
+                color: "#f5f5f5 !important",
+              },
+              "& .MuiTablePagination-actions botton": {
+                color: "#f5f5f5 !important",
               },
               "& .MuiCheckbox-root": {
                 color: `${colors.greenAccent[200]} !important`,
