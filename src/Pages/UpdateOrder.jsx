@@ -1094,10 +1094,10 @@ function UpdateOrder() {
             {params.row.payment_mode === null
               ? "N/A"
               : params.row.payment_mode === 1
-              ? "Online"
-              : params.row.payment_mode === 2
-              ? "Offline"
-              : "N/A"}
+                ? "Online"
+                : params.row.payment_mode === 2
+                  ? "Offline"
+                  : "N/A"}
           </p>
         ),
       },
@@ -1180,10 +1180,10 @@ function UpdateOrder() {
             {params.row.type === 1
               ? "Credit"
               : params.row.type === 2
-              ? "Debit"
-              : params.row.type === 3
-              ? "Refund"
-              : ""}
+                ? "Debit"
+                : params.row.type === 3
+                  ? "Refund"
+                  : ""}
           </p>
         ),
       },
@@ -1196,8 +1196,8 @@ function UpdateOrder() {
             {params.row.payment_mode === 1
               ? "Online"
               : params.row.payment_mode === 2
-              ? "Cash"
-              : ""}
+                ? "Cash"
+                : ""}
           </p>
         ),
       },
@@ -1954,8 +1954,7 @@ function UpdateOrder() {
                     getAddress(data.id);
                   }}
                   getOptionLabel={(option) =>
-                    `${option?.name}   (${
-                      option?.phone ? option?.phone : option?.email
+                    `${option?.name}   (${option?.phone ? option?.phone : option?.email
                     })` || ""
                   }
                   renderInput={(params) => (
@@ -1991,16 +1990,15 @@ function UpdateOrder() {
                     value={
                       productId
                         ? products?.find((option) => {
-                            return productId === option.id;
-                          }) ?? null
+                          return productId === option.id;
+                        }) ?? null
                         : null
                     }
                     onChange={(e, data) => {
                       setproductId(data.id);
                     }}
                     getOptionLabel={(option) =>
-                      `${option?.title} (${option?.qty_text}) ${
-                        option?.subscription === 1 ? "( Subcription )" : ""
+                      `${option?.title} (${option?.qty_text}) ${option?.subscription === 1 ? "( Subcription )" : ""
                       }` || ""
                     }
                     renderInput={(params) => (
@@ -2993,6 +2991,7 @@ function UpdateOrder() {
               getOptionLabel={(option) =>
                 `${option?.executive_id} - ${option?.name}` || ""
               }
+              getOptionDisabled={(option) => option.is_active === "false"}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -3009,11 +3008,12 @@ function UpdateOrder() {
               <DatePicker
                 label="Delivery Date"
                 format="DD/MM/YYYY"
+                value={addDlvryDate ? dayjs(addDlvryDate, "DD-MM-YYYY") : null}
                 onChange={(value) => {
                   if (value) {
-                    setaddDlvryDate(moment(value.$d).format("DD-MM-YYYY"));
+                    setaddDlvryDate(dayjs(value.$d).format("DD-MM-YYYY"));
                   } else {
-                    setaddDlvryDate(""); // Clear or handle empty value
+                    setaddDlvryDate("");
                   }
                 }}
                 minDate={dayjs(date)}
@@ -3043,10 +3043,14 @@ function UpdateOrder() {
               disabled={isUpdating}
               onClick={(e) => {
                 e.preventDefault();
-                if (!selectedBoy) {
+                if (!selectedBoy || !addDlvryDate) {
                   handleSnakBarOpen();
                   setalertType("error");
-                  setalertMsg("Please Select Delivery Partner");
+                  if (!selectedBoy) {
+                    setalertMsg("Please select a Delivery Partner");
+                  } else if (!addDlvryDate) {
+                    setalertMsg("Please select a Delivery Date");
+                  }
                 } else {
                   addOrderDelivery();
                 }

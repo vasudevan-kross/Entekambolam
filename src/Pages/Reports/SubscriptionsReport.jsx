@@ -251,14 +251,20 @@ function SubscriptionsReport() {
           field: "total_order_amount",
           headerName: "Total Order Amount",
           width: 180,
-          renderCell: (params) => params?.row?.total_order_amount.toFixed(2)
+          renderCell: (params) => {
+            const amount = Number(params?.row?.total_order_amount);
+            return !isNaN(amount) ? amount.toFixed(2) : "0.00";
+          }
         },
         {
           field: "wallet_amount",
           headerName: "Wallet Amount",
           width: 180,
-          renderCell: (params) => params?.row?.wallet_amount.toFixed(2)
-        },
+          renderCell: (params) => {
+            const amount = Number(params?.row?.wallet_amount);
+            return !isNaN(amount) ? amount.toFixed(2) : "0.00";
+          }
+        }
       ];
     }
 
