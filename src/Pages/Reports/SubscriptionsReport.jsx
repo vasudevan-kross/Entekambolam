@@ -252,7 +252,7 @@ function SubscriptionsReport() {
           headerName: "Total Order Amount",
           width: 180,
           renderCell: (params) => {
-            const amount = Number(params?.row?.total_order_amount);
+            const amount = parseFloat()(params?.row?.total_order_amount);
             return !isNaN(amount) ? amount.toFixed(2) : "0.00";
           }
         },
@@ -261,7 +261,7 @@ function SubscriptionsReport() {
           headerName: "Wallet Amount",
           width: 180,
           renderCell: (params) => {
-            const amount = Number(params?.row?.wallet_amount);
+            const amount = parseFloat()(params?.row?.wallet_amount);
             return !isNaN(amount) ? amount.toFixed(2) : "0.00";
           }
         }

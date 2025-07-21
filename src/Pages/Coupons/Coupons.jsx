@@ -23,6 +23,7 @@ import api from "../../Data/api";
 import { DataGrid, GridToolbarContainer } from "@mui/x-data-grid";
 import LoadingSkeleton from "../../Components/LoadingSkeleton";
 import dayjs from "dayjs";
+import moment from "moment/moment";
 
 function Coupons() {
   const theme = useTheme();
@@ -34,6 +35,7 @@ function Coupons() {
   const [open, setOpen] = useState(false);
 
   const [coupons, setCoupons] = useState([]);
+  const [allCoupons, setAllCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -82,6 +84,7 @@ function Coupons() {
     const res = await GET(token, `${api}/get_all_coupons`);
     if (res?.data) {
       setCoupons(res.data);
+      setAllCoupons(res.data);
     }
     setLoading(false);
   };
@@ -128,6 +131,7 @@ function Coupons() {
 
     const value = Number(form.value);
     const minCartValue = Number(form.min_cart_value);
+    const maxUsesPerUser = Number(form.max_uses_per_user);
 
     if (isNaN(value) || value <= 0) {
       handleSnackbar("error", "Value must be a positive number.");
@@ -150,10 +154,18 @@ function Coupons() {
       return;
     }
 
+    if (isNaN(maxUsesPerUser) || maxUsesPerUser <= 0) {
+      handleSnackbar(
+        "error",
+        "Max uses per user should be greater than zero."
+      );
+      return;
+    }
+
     const start = new Date(form.start_at);
     const end = new Date(form.expires_at);
 
-    if (start >= end) {
+    if (start > end) {
       handleSnackbar("error", "Expiry date must be after start date.");
       return;
     }
@@ -271,6 +283,52 @@ function Coupons() {
     setOpen(false);
     setEditingId(null);
   };
+
+  const handleSearchChange = (e) => {
+    const searchQuery = e.target.value.toLowerCase();
+
+    setTimeout(() => {
+      const filteredCoupons = allCoupons
+        .map((obj) => ({
+          ...obj,
+          start_at_temp: obj.start_at
+            ? moment.utc(obj.start_at).local().format("DD-MM-YYYY")
+            : "",
+          type_temp:
+            obj.type === 1
+              ? "amount"
+              : obj.type === 2
+                ? "percentage"
+                : "",
+          status_temp: obj.is_active ? "active" : "inactive",
+          first_time_temp: obj.first_time_user_only ? "yes" : "no",
+        }))
+        .filter((obj) => {
+          return Object.values(obj).some((val) => {
+            if (typeof val === "string") {
+              return val.toLowerCase().includes(searchQuery);
+            }
+            if (typeof val === "number") {
+              return val.toString().includes(searchQuery);
+            }
+            return false;
+          });
+        })
+        .map((obj) => {
+          const {
+            start_at_temp,
+            type_temp,
+            status_temp,
+            first_time_temp,
+            ...rest
+          } = obj;
+          return rest;
+        });
+
+      setCoupons(filteredCoupons);
+    }, 500);
+  };
+
   const columns = useMemo(
     () => [
       { field: "code", headerName: "Code", flex: 1 },
@@ -444,6 +502,22 @@ function Coupons() {
         <Typography variant="h2" fontWeight={600} fontSize="1.5rem">
           Manage Coupons
         </Typography>
+        <Box
+          display={"flex"}
+          alignItems={"center"}
+          gap={"1rem"}
+          width={"32.33%"}
+        >
+          <TextField
+            size="small"
+            sx={{ width: { xs: "80%", sm: "300px", md: "500px" } }}
+            id="Search"
+            label="Search"
+            name="Search"
+            color="secondary"
+            onChange={handleSearchChange}
+          />
+        </Box>
       </Box>
       <Box className="mt-6">
         {loading ? (
@@ -452,7 +526,7 @@ function Coupons() {
           <Box
             className={`text-card-foreground shadow-sm rounded-lg height-calc p-4 xl:p-2 ${
               theme.palette.mode === "dark" ? "bg-darkcard" : "bg-card"
-            }`}
+              }`}
             sx={{
               width: "100%",
               height: "100%",
